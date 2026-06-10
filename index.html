@@ -3305,38 +3305,57 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
     if(!fb||!user) return;
     setDeleteLoading(true); setDeleteError('');
     try {
-      // 재인증 (이메일 유저는 비밀번호로, 구글은 팝업으로)
       const isGoogle = user.providerData?.[0]?.providerId === 'google.com';
+
+      // ── 재인증 ──
       if(isGoogle) {
+        // 구글: 팝업으로 재인증
         const provider = new fb.GoogleAuthProvider();
-        await fb.reauthenticateWithCredential(user, await fb.signInWithPopup(fb.auth, provider).then(r=>r.credential).catch(()=>null) || (() => { throw new Error('구글 재인증이 필요해요'); })());
+        const result = await fb.signInWithPopup(fb.auth, provider);
+        const cred = fb.GoogleAuthProvider.credentialFromResult(result);
+        if(!cred) throw new Error('구글 재인증에 실패했어요');
+        await fb.reauthenticateWithCredential(user, cred);
       } else {
-        if(!deletePassword.trim()) { setDeleteError('비밀번호를 입력해주세요'); setDeleteLoading(false); return; }
+        // 이메일: 비밀번호로 재인증
+        if(!deletePassword.trim()) {
+          setDeleteError('비밀번호를 입력해주세요');
+          setDeleteLoading(false);
+          return;
+        }
         const cred = fb.EmailAuthProvider.credential(user.email, deletePassword);
         await fb.reauthenticateWithCredential(user, cred);
       }
-      // Firestore 데이터 삭제
+
+      // ── Firestore 데이터 삭제 ──
       const uid = user.uid;
-      const db = fb.db;
       const colls = ['foods','lifeItems','shoppingItems','diaries'];
       for(const col of colls) {
-        const snap = await fb.getDocs(fb.collection(db,'users',uid,col));
-        const batch = fb.writeBatch(db);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        if(snap.docs.length) await batch.commit();
+        const snap = await fb.getDocs(fb.collection(fb.db,'users',uid,col));
+        if(snap.docs.length > 0) {
+          const batch = fb.writeBatch(fb.db);
+          snap.docs.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
       }
-      await fb.deleteDoc(fb.doc(db,'users',uid));
-      // Firebase Auth 계정 삭제
+      await fb.deleteDoc(fb.doc(fb.db,'users',uid));
+
+      // ── Firebase Auth 계정 삭제 ──
       await fb.deleteUser(user);
+      // 삭제 성공 시 onAuthStateChanged가 null을 반환해서 자동 로그아웃됨
+
     } catch(e) {
+      console.error('Delete account error:', e);
       const errMap = {
-        'auth/wrong-password':'비밀번호가 틀렸어요',
-        'auth/requires-recent-login':'보안을 위해 다시 로그인 후 삭제해주세요',
-        'auth/too-many-requests':'잠시 후 다시 시도해주세요',
+        'auth/wrong-password':       '비밀번호가 틀렸어요',
+        'auth/invalid-credential':   '비밀번호가 틀렸어요',
+        'auth/requires-recent-login':'다시 로그인 후 시도해주세요',
+        'auth/too-many-requests':    '잠시 후 다시 시도해주세요',
+        'auth/popup-closed-by-user': '팝업이 닫혔어요. 다시 시도해주세요',
+        'auth/cancelled-popup-request':'팝업이 취소됐어요',
       };
       setDeleteError(errMap[e.code] || e.message || '오류가 발생했어요');
+      setDeleteLoading(false);
     }
-    setDeleteLoading(false);
   }
 
   const SECTION_COLORS = [
