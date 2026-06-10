@@ -72,8 +72,8 @@
 <!-- Firebase SDK -->
 <script type="module" id="firebase-init">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBk7oAh970wN06ZokSBQ42OIXyT_Q91ULY",
@@ -95,8 +95,9 @@
     auth, db, googleProvider,
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
     signOut, signInWithPopup, updateProfile, onAuthStateChanged,
-    GoogleAuthProvider,
-    doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp
+    GoogleAuthProvider, deleteUser, reauthenticateWithCredential, EmailAuthProvider,
+    doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp,
+    query, where, getDocs, writeBatch
   };
   window._firebaseReady = true;
   window.dispatchEvent(new Event('firebaseReady'));
@@ -2633,22 +2634,31 @@ function SharePage({fb, user, lifeItems, foods}) {
   const theme = useTheme();
   const [shareCode, setShareCode] = React.useState('');
   const [inputCode, setInputCode] = React.useState('');
-  const [sharedWith, setSharedWith] = React.useState([]);
-  const [sharedFrom, setSharedFrom] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [msg, setMsg] = React.useState('');
+  const [msgType, setMsgType] = React.useState('info'); // 'info'|'error'|'success'
+  const [partnerData, setPartnerData] = React.useState(null); // 연결된 룸메이트 데이터
+  const [partnerUid, setPartnerUid] = React.useState('');
+  const [disconnecting, setDisconnecting] = React.useState(false);
 
+  // 내 공유 데이터 로드 + 파트너 실시간 구독
   React.useEffect(()=>{
     if(!fb||!user) return;
-    // 내 공유 코드 가져오기
-    fb.getDoc(fb.doc(fb.db,'users',user.uid)).then(snap=>{
-      if(snap.exists()) {
-        const d = snap.data();
-        setShareCode(d.shareCode||'');
-        setSharedWith(d.sharedWith||[]);
-        setSharedFrom(d.sharedFrom||null);
-      }
+    const unsub = fb.onSnapshot(fb.doc(fb.db,'users',user.uid), snap=>{
+      if(!snap.exists()) return;
+      const d = snap.data();
+      setShareCode(d.shareCode||'');
+      const pUid = d.partnerUid||'';
+      setPartnerUid(pUid);
+      if(!pUid) { setPartnerData(null); return; }
+      // 파트너 데이터 구독
+      const unsubPartner = fb.onSnapshot(fb.doc(fb.db,'users',pUid), pSnap=>{
+        if(!pSnap.exists()) { setPartnerData(null); return; }
+        setPartnerData({uid:pUid, ...pSnap.data()});
+      });
+      return unsubPartner;
     });
+    return ()=>unsub();
   },[fb,user]);
 
   async function generateCode() {
@@ -2659,23 +2669,60 @@ function SharePage({fb, user, lifeItems, foods}) {
   }
 
   async function connectShare() {
-    if(!fb||!user||!inputCode.trim()) return;
+    if(!fb||!user||inputCode.trim().length<6) return;
+    const code = inputCode.trim().toUpperCase();
+    if(code === shareCode) { showMsg('본인 코드는 입력할 수 없어요', 'error'); return; }
     setLoading(true); setMsg('');
     try {
-      // 코드로 사용자 찾기
-      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      // Simplified: just store the code and show pending
-      await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {sharedFrom:inputCode.trim().toUpperCase()});
-      setSharedFrom(inputCode.trim().toUpperCase());
-      setMsg('연결 요청을 보냈어요!');
-    } catch(e) { setMsg('오류가 발생했어요.'); }
+      // 코드로 상대방 유저 찾기
+      const q = fb.query(fb.collection(fb.db,'users'), fb.where('shareCode','==',code));
+      const snap = await fb.getDocs(q);
+      if(snap.empty) { showMsg('코드를 찾을 수 없어요. 다시 확인해주세요.','error'); setLoading(false); return; }
+      const partnerDoc = snap.docs[0];
+      const pUid = partnerDoc.id;
+      if(pUid === user.uid) { showMsg('본인 코드예요','error'); setLoading(false); return; }
+      // 양방향 연결
+      const batch = fb.writeBatch(fb.db);
+      batch.update(fb.doc(fb.db,'users',user.uid), {partnerUid: pUid});
+      batch.update(fb.doc(fb.db,'users',pUid), {partnerUid: user.uid});
+      await batch.commit();
+      showMsg('연결됐어요! 🎉','success');
+      setInputCode('');
+    } catch(e) {
+      showMsg('연결 중 오류가 발생했어요: '+e.message,'error');
+    }
     setLoading(false);
   }
 
-  // 공유된 내 오늘 현황
+  async function disconnect() {
+    if(!fb||!user||!partnerUid) return;
+    setDisconnecting(true);
+    try {
+      const batch = fb.writeBatch(fb.db);
+      batch.update(fb.doc(fb.db,'users',user.uid), {partnerUid:''});
+      batch.update(fb.doc(fb.db,'users',partnerUid), {partnerUid:''});
+      await batch.commit();
+      setPartnerData(null); setPartnerUid('');
+      showMsg('연결이 해제됐어요','info');
+    } catch(e) { showMsg('오류: '+e.message,'error'); }
+    setDisconnecting(false);
+  }
+
+  function showMsg(text, type='info') {
+    setMsg(text); setMsgType(type);
+    setTimeout(()=>setMsg(''), 4000);
+  }
+
   const todayStr = getToday();
   const todayDue = lifeItems.filter(c=>isDueOn(c,todayStr));
   const todayDoneCount = todayDue.filter(c=>isDoneOn(c,todayStr)).length;
+  const pct = todayDue.length ? Math.round(todayDoneCount/todayDue.length*100) : 0;
+
+  // 파트너 현황 계산
+  const pTodayDue = partnerData ? (partnerData.lifeItems||[]).filter(c=>isDueOn(c,todayStr)) : [];
+  const pTodayDone = pTodayDue.filter(c=>isDoneOn(c,todayStr)).length;
+  const pPct = pTodayDue.length ? Math.round(pTodayDone/pTodayDue.length*100) : 0;
+  const msgColors = {info:{bg:theme.light,color:theme.primary,border:theme.mid}, error:{bg:'#fef2f2',color:'#ef4444',border:'#fecaca'}, success:{bg:'#f0fdf4',color:'#16a34a',border:'#bbf7d0'}};
 
   return (
     <div>
@@ -2684,54 +2731,99 @@ function SharePage({fb, user, lifeItems, foods}) {
         <div style={{fontSize:13,color:C.muted}}>룸메이트와 생활 관리를 함께해요</div>
       </div>
 
-      {/* 내 공유 코드 */}
-      <div style={{background:'linear-gradient(135deg,'+theme.bg+','+theme.light+')',borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
-        <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:8}}>📤 내 공유 코드</div>
-        {shareCode ? (
-          <div>
-            <div style={{fontSize:32,fontWeight:900,color:theme.primary,letterSpacing:4,textAlign:'center',padding:'12px',background:C.card,borderRadius:12,border:`2px dashed ${theme.border}`,marginBottom:8}}>{shareCode}</div>
-            <div style={{fontSize:11,color:C.muted,textAlign:'center'}}>이 코드를 룸메이트에게 알려주세요</div>
-            <button onClick={()=>{navigator.clipboard?.writeText(shareCode);setMsg('복사됐어요!');setTimeout(()=>setMsg(''),2000);}} style={{width:'100%',marginTop:8,padding:'9px',borderRadius:10,border:`1.5px solid ${theme.mid}`,background:C.card,color:theme.primary,fontSize:12,fontWeight:700,cursor:'pointer',margin:0}}>코드 복사</button>
-          </div>
-        ):(
-          <button onClick={generateCode} style={{width:'100%',padding:'12px',borderRadius:12,border:'none',background:theme.primary,color:C.card,fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>공유 코드 생성</button>
-        )}
-      </div>
+      {msg&&<div style={{padding:'11px 16px',borderRadius:12,border:`1.5px solid ${msgColors[msgType].border}`,background:msgColors[msgType].bg,color:msgColors[msgType].color,fontSize:13,fontWeight:600,marginBottom:14}}>{msg}</div>}
 
-      {/* 코드로 연결 */}
-      <div style={{background:C.card,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📥 룸메이트 코드 입력</div>
-        <div style={{display:'flex',gap:7}}>
-          <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase())} maxLength={6}
-            placeholder="6자리 코드"
-            style={{flex:1,padding:'11px 14px',border:`1.5px solid ${C.border2}`,borderRadius:11,fontSize:16,outline:'none',letterSpacing:3,fontWeight:700,textTransform:'uppercase'}}
-            onFocus={e=>e.target.style.borderColor=theme.primary}
-            onBlur={e=>e.target.style.borderColor='#e5e7eb'}
-          />
-          <button onClick={connectShare} disabled={loading||inputCode.length<6} style={{padding:'11px 16px',borderRadius:11,border:'none',background:inputCode.length>=6?theme.primary:'#e5e7eb',color:inputCode.length>=6?'#fff':'#9ca3af',fontSize:14,fontWeight:700,cursor:inputCode.length>=6?'pointer':'default',width:'auto',margin:0}}>연결</button>
-        </div>
-        {sharedFrom&&<div style={{marginTop:8,fontSize:12,color:'#16a34a',fontWeight:600}}>✓ {sharedFrom} 코드와 연결 중</div>}
-        {msg&&<div style={{marginTop:8,fontSize:12,color:theme.primary,fontWeight:600}}>{msg}</div>}
-      </div>
-
-      {/* 내 현황 미리보기 */}
-      <div style={{background:C.card,borderRadius:18,padding:'20px',border:`1.5px solid ${C.border}`}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📊 공유될 내 현황</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
-            <span style={{fontSize:13,color:C.text3}}>오늘 달성</span>
-            <span style={{fontSize:13,fontWeight:700,color:theme.primary}}>{todayDoneCount}/{todayDue.length}개</span>
+      {/* 연결된 파트너 */}
+      {partnerData ? (
+        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <div style={{fontSize:14,fontWeight:700,color:theme.primary}}>✅ 연결됨</div>
+            <button onClick={disconnect} disabled={disconnecting} style={{fontSize:11,color:'#ef4444',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:20,padding:'4px 12px',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>{disconnecting?'해제 중...':'연결 해제'}</button>
           </div>
-          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
-            <span style={{fontSize:13,color:C.text3}}>등록 식재료</span>
-            <span style={{fontSize:13,fontWeight:700,color:C.text2}}>{foods.length}개</span>
+          {/* 파트너 현황 */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            {/* 나 */}
+            <div style={{background:'rgba(255,255,255,0.7)',borderRadius:14,padding:'14px',textAlign:'center'}}>
+              <div style={{fontSize:22,marginBottom:4}}>{partnerData.animal||'🐻'}</div>
+              <div style={{fontSize:12,fontWeight:700,color:theme.primary,marginBottom:6}}>나</div>
+              <div style={{fontSize:20,fontWeight:800,color:theme.primary}}>{pct}%</div>
+              <div style={{fontSize:11,color:C.muted,marginTop:2}}>{todayDoneCount}/{todayDue.length} 완료</div>
+              <div style={{height:4,background:'rgba(255,255,255,0.5)',borderRadius:4,marginTop:8,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${pct}%`,background:theme.primary,borderRadius:4,transition:'width 0.5s'}}/>
+              </div>
+            </div>
+            {/* 파트너 — 파트너의 lifeItems는 Firestore에 직접 없어서 weeklyLog 기반 표시 */}
+            <div style={{background:'rgba(255,255,255,0.7)',borderRadius:14,padding:'14px',textAlign:'center'}}>
+              <div style={{fontSize:22,marginBottom:4}}>{partnerData.animal||'🐻'}</div>
+              <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:6}}>{partnerData.name||'룸메이트'}</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#374151'}}>{(partnerData.weeklyLog||{})[todayStr]||0}%</div>
+              <div style={{fontSize:11,color:C.muted,marginTop:2}}>오늘 달성률</div>
+              <div style={{height:4,background:'rgba(0,0,0,0.08)',borderRadius:4,marginTop:8,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${(partnerData.weeklyLog||{})[todayStr]||0}%`,background:'#374151',borderRadius:4,transition:'width 0.5s'}}/>
+              </div>
+            </div>
           </div>
-          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
-            <span style={{fontSize:13,color:C.text3}}>생활 관리 항목</span>
-            <span style={{fontSize:13,fontWeight:700,color:C.text2}}>{lifeItems.length}개</span>
+          {/* 주간 스트릭 비교 */}
+          <div style={{marginTop:12,padding:'12px',background:'rgba(255,255,255,0.6)',borderRadius:12,display:'flex',justifyContent:'space-around'}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:18,fontWeight:800,color:theme.primary}}>🔥{partnerData?.streak?.count||0}</div>
+              <div style={{fontSize:10,color:C.muted}}>내 스트릭</div>
+            </div>
+            <div style={{width:1,background:C.border2}}/>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:18,fontWeight:800,color:'#374151'}}>🔥{partnerData?.partnerStreak||0}</div>
+              <div style={{fontSize:10,color:C.muted}}>{partnerData.name||'룸메이트'} 스트릭</div>
+            </div>
           </div>
         </div>
-        <div style={{marginTop:10,fontSize:11,color:C.muted,textAlign:'center'}}>💡 공유 기능은 현재 베타 버전이에요</div>
+      ) : (
+        <>
+          {/* 내 공유 코드 */}
+          <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:8}}>📤 내 공유 코드</div>
+            {shareCode ? (
+              <div>
+                <div style={{fontSize:32,fontWeight:900,color:theme.primary,letterSpacing:6,textAlign:'center',padding:'14px',background:C.card,borderRadius:12,border:`2px dashed ${theme.border}`,marginBottom:8,fontFamily:'monospace'}}>{shareCode}</div>
+                <div style={{fontSize:11,color:C.muted,textAlign:'center',marginBottom:8}}>이 코드를 룸메이트에게 알려주세요</div>
+                <button onClick={()=>{navigator.clipboard?.writeText(shareCode);showMsg('클립보드에 복사됐어요!','success');}} style={{width:'100%',padding:'9px',borderRadius:10,border:`1.5px solid ${theme.mid}`,background:C.card,color:theme.primary,fontSize:12,fontWeight:700,cursor:'pointer',margin:0}}>📋 코드 복사</button>
+              </div>
+            ):(
+              <button onClick={generateCode} style={{width:'100%',padding:'13px',borderRadius:12,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>🔑 공유 코드 생성</button>
+            )}
+          </div>
+
+          {/* 코드 입력 */}
+          <div style={{background:C.card,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:5}}>📥 룸메이트 코드 입력</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:12}}>룸메이트의 공유 코드를 입력하면 바로 연결돼요</div>
+            <div style={{display:'flex',gap:7}}>
+              <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''))} maxLength={6}
+                placeholder="6자리 코드"
+                style={{flex:1,padding:'13px 16px',border:`2px solid ${inputCode.length===6?theme.primary:C.border2}`,borderRadius:12,fontSize:18,outline:'none',letterSpacing:5,fontWeight:800,textAlign:'center',background:C.input,color:C.text,transition:'border-color 0.15s',fontFamily:'monospace'}}
+              />
+              <button onClick={connectShare} disabled={loading||inputCode.length<6} style={{padding:'13px 18px',borderRadius:12,border:'none',background:inputCode.length>=6?theme.primary:C.card3,color:inputCode.length>=6?'#fff':C.muted,fontSize:14,fontWeight:700,cursor:inputCode.length>=6?'pointer':'default',width:'auto',margin:0,transition:'all 0.15s'}}>
+                {loading?'..':'연결'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 내 현황 요약 */}
+      <div style={{background:C.card,borderRadius:18,padding:'18px',border:`1.5px solid ${C.border}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📊 내 오늘 현황</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+          {[
+            {label:'달성률',value:`${pct}%`,color:theme.primary},
+            {label:'식재료',value:`${foods.length}개`,color:'#16a34a'},
+            {label:'생활항목',value:`${lifeItems.length}개`,color:'#f97316'},
+          ].map(s=>(
+            <div key={s.label} style={{textAlign:'center',padding:'10px 6px',background:C.card2,borderRadius:12}}>
+              <div style={{fontSize:18,fontWeight:800,color:s.color}}>{s.value}</div>
+              <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -3203,6 +3295,49 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
   const [editName, setEditName] = React.useState(userName);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [deleteStep, setDeleteStep] = React.useState('confirm');
+  const [deletePassword, setDeletePassword] = React.useState('');
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState('');
+
+  async function handleDeleteAccount() {
+    if(!fb||!user) return;
+    setDeleteLoading(true); setDeleteError('');
+    try {
+      // 재인증 (이메일 유저는 비밀번호로, 구글은 팝업으로)
+      const isGoogle = user.providerData?.[0]?.providerId === 'google.com';
+      if(isGoogle) {
+        const provider = new fb.GoogleAuthProvider();
+        await fb.reauthenticateWithCredential(user, await fb.signInWithPopup(fb.auth, provider).then(r=>r.credential).catch(()=>null) || (() => { throw new Error('구글 재인증이 필요해요'); })());
+      } else {
+        if(!deletePassword.trim()) { setDeleteError('비밀번호를 입력해주세요'); setDeleteLoading(false); return; }
+        const cred = fb.EmailAuthProvider.credential(user.email, deletePassword);
+        await fb.reauthenticateWithCredential(user, cred);
+      }
+      // Firestore 데이터 삭제
+      const uid = user.uid;
+      const db = fb.db;
+      const colls = ['foods','lifeItems','shoppingItems','diaries'];
+      for(const col of colls) {
+        const snap = await fb.getDocs(fb.collection(db,'users',uid,col));
+        const batch = fb.writeBatch(db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        if(snap.docs.length) await batch.commit();
+      }
+      await fb.deleteDoc(fb.doc(db,'users',uid));
+      // Firebase Auth 계정 삭제
+      await fb.deleteUser(user);
+    } catch(e) {
+      const errMap = {
+        'auth/wrong-password':'비밀번호가 틀렸어요',
+        'auth/requires-recent-login':'보안을 위해 다시 로그인 후 삭제해주세요',
+        'auth/too-many-requests':'잠시 후 다시 시도해주세요',
+      };
+      setDeleteError(errMap[e.code] || e.message || '오류가 발생했어요');
+    }
+    setDeleteLoading(false);
+  }
 
   const SECTION_COLORS = [
     {id:'purple',label:'보라',primary:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe'},
@@ -3354,7 +3489,7 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
       {/* 계정 정보 */}
       <div style={{background:C.card,borderRadius:18,padding:'20px 22px',border:`1.5px solid ${C.border}`,marginBottom:14}}>
         {sectionTitle('🔐 계정 정보')}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f9fafb'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:`1px solid ${C.border}`}}>
           <div style={{fontSize:13,color:C.text3}}>이메일</div>
           <div style={{fontSize:13,fontWeight:600,color:C.text}}>{user?.email||'-'}</div>
         </div>
@@ -3365,6 +3500,53 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
           </div>
         </div>
       </div>
+
+      {/* 계정 삭제 */}
+      {!showDeleteConfirm ? (
+        <div style={{marginBottom:14}}>
+          <button onClick={()=>setShowDeleteConfirm(true)} style={{
+            width:'100%',padding:'13px',borderRadius:14,border:'1.5px solid #fecaca',
+            background:'#fef2f2',color:'#ef4444',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
+          }}>🗑️ 계정 삭제</button>
+        </div>
+      ) : (
+        <div style={{background:'#fef2f2',borderRadius:18,padding:'20px 22px',border:'2px solid #fecaca',marginBottom:14}}>
+          <div style={{fontSize:16,fontWeight:800,color:'#ef4444',marginBottom:8}}>⚠️ 정말 삭제하시겠어요?</div>
+          <div style={{fontSize:13,color:'#b91c1c',lineHeight:1.7,marginBottom:16}}>
+            계정을 삭제하면 아래 모든 데이터가 <strong>영구적으로</strong> 삭제돼요:<br/>
+            • 식재료 목록, 생활 관리 항목<br/>
+            • 달성 기록, 스트릭, 일기<br/>
+            • 장보기 목록, 설정<br/>
+            <strong style={{color:'#ef4444'}}>복구가 절대 불가능해요.</strong>
+          </div>
+          {deleteStep === 'confirm' && (
+            <>
+              {user?.providerData?.[0]?.providerId !== 'google.com' && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:12,color:'#b91c1c',marginBottom:6,fontWeight:600}}>비밀번호를 입력해 본인 확인을 해주세요</div>
+                  <input
+                    type="password" placeholder="현재 비밀번호"
+                    value={deletePassword} onChange={e=>setDeletePassword(e.target.value)}
+                    style={{width:'100%',padding:'11px 14px',border:'1.5px solid #fecaca',borderRadius:11,fontSize:14,outline:'none',background:'#fff',boxSizing:'border-box',color:'#1f2937'}}
+                  />
+                </div>
+              )}
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={handleDeleteAccount} disabled={deleteLoading} style={{
+                  flex:1,padding:'12px',borderRadius:12,border:'none',
+                  background:deleteLoading?'#fca5a5':'#ef4444',color:'#fff',
+                  fontSize:14,fontWeight:700,cursor:deleteLoading?'default':'pointer',margin:0,
+                }}>{deleteLoading?'삭제 중...':'삭제 확인'}</button>
+                <button onClick={()=>{setShowDeleteConfirm(false);setDeleteStep('confirm');setDeletePassword('');setDeleteError('');}} style={{
+                  flex:1,padding:'12px',borderRadius:12,border:`1.5px solid ${C.border2}`,
+                  background:C.card,color:C.text3,fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
+                }}>취소</button>
+              </div>
+              {deleteError&&<div style={{marginTop:10,fontSize:12,color:'#ef4444',fontWeight:600,textAlign:'center'}}>{deleteError}</div>}
+            </>
+          )}
+        </div>
+      )}
 
       {/* 앱 정보 */}
       <div style={{background:C.card,borderRadius:18,padding:'20px 22px',border:`1.5px solid ${C.border}`,marginBottom:20}}>
