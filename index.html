@@ -541,6 +541,150 @@ function RepeatPicker({form,setForm}) {
 // ============================================================
 // SIDEBAR
 // ============================================================
+// ============================================================
+// 페이지 사용법 가이드
+// ============================================================
+
+const PAGE_GUIDES = {
+  home: {
+    title: '🏠 홈 화면',
+    steps: [
+      { emoji: '🔔', title: '우선순위 알림', desc: '유통기한 임박 식재료나 밀린 생활 관리 항목이 자동으로 표시돼요. 카드를 누르면 해당 페이지로 이동해요.' },
+      { emoji: '📊', title: '생활 달성 현황', desc: '오늘 해야 할 항목 중 몇 개를 완료했는지 원형 게이지로 확인해요. 🌱 1개↑ / 💪 50%↑ / 🔥 100% 달성 단계로 나뉘어요.' },
+      { emoji: '✨', title: '맞춤 추천', desc: '내 상태에 따라 실시간으로 바뀌는 추천이에요. 냉장고가 비면 장보기, 빨래가 밀리면 세탁 알림이 나타나요.' },
+      { emoji: '🔥', title: '연속 스트릭', desc: '하루 1개 이상 완료하면 스트릭이 쌓여요. 사이드바 캐릭터 옆에서도 확인할 수 있어요.' },
+    ],
+  },
+  food: {
+    title: '🥕 식재료',
+    steps: [
+      { emoji: '➕', title: '식재료 추가', desc: '+ 추가 버튼으로 직접 입력하거나, 아래 빠른 추가 버튼으로 자주 쓰는 재료를 바로 넣어요. 구매일 기준 유통기한이 자동 계산돼요.' },
+      { emoji: '🧊', title: '냉장고 현황', desc: '색상으로 상태를 한눈에 파악해요. 🟢 여유 → 🟡 주의 → 🟠 임박 → 🔴 위험/초과 순이에요.' },
+      { emoji: '🛒', title: '장보기 목록', desc: '장보기 목록 탭에서 필요한 것들을 카테고리별로 정리해요. 임박 식재료는 자동으로 제안돼요.' },
+      { emoji: '✕', title: '식재료 삭제', desc: '카드 오른쪽 ✕ 버튼으로 삭제해요. 먹었거나 버렸을 때 삭제하면 목록이 깔끔하게 유지돼요.' },
+    ],
+  },
+  life: {
+    title: '🌀 생활 관리',
+    steps: [
+      { emoji: '✅', title: '오늘 할 일', desc: '오늘 해야 하는 루틴·생활·청소 항목이 표시돼요. 체크하면 아래로 내려가고, 다음날 자동으로 초기화돼요.' },
+      { emoji: '📅', title: '날짜 이동', desc: '< > 버튼으로 날짜를 바꿔서 과거 기록을 확인하거나 미래 루틴을 미리 볼 수 있어요.' },
+      { emoji: '📋', title: '예정된 관리', desc: '아직 주기가 안 된 항목이에요. D-day로 언제 해야 하는지 표시되고, 진행 바로 주기 얼마나 지났는지 한눈에 봐요.' },
+      { emoji: '⇅', title: '순서 편집', desc: '미완료 항목이 2개 이상이면 ⇅ 순서 버튼이 나타나요. 누르면 ↑↓ 버튼으로 순서를 바꿀 수 있어요.' },
+      { emoji: '📊', title: '월간 리포트', desc: '📊 버튼을 누르면 이번 달 달성률, 히트맵, 최장 연속 기록을 확인해요.' },
+      { emoji: '📔', title: '하루 기록', desc: '📔 버튼을 누르면 오늘 일기를 써요. 기분 이모지와 자유 텍스트로 하루를 기록해요.' },
+    ],
+  },
+  mission: {
+    title: '🎯 미션 & 성장',
+    steps: [
+      { emoji: '🥚', title: '캐릭터 성장', desc: '스트릭이 쌓이면 캐릭터가 성장해요. 🥚 시작 → 🌱 새싹 → ⭐ 노력가 → 💎 고수 → 👑 전설 5단계예요.' },
+      { emoji: '📋', title: '주간 미션', desc: '매주 월요일에 6가지 미션이 초기화돼요. 완료하면 XP를 획득하고 주간 XP 바가 채워져요.' },
+      { emoji: '⚡', title: 'XP 시스템', desc: '이번 주 3일 달성(30XP), 5일 달성(60XP), 완벽한 하루(40XP), 청소 완료(25XP), 식재료 관리(35XP), 하루기록(20XP)' },
+    ],
+  },
+  shop: {
+    title: '🛒 장보기 목록',
+    steps: [
+      { emoji: '➕', title: '항목 추가', desc: '입력창에 적고 Enter 또는 추가 버튼을 눌러요. 카테고리를 선택하면 분류가 쉬워요.' },
+      { emoji: '✓', title: '구매 체크', desc: '항목을 누르면 완료 표시가 돼요. 다시 누르면 취소돼요.' },
+      { emoji: '🔔', title: '자동 제안', desc: '유통기한이 D-2 이내인 식재료가 자동으로 제안돼요. + 버튼으로 바로 목록에 추가해요.' },
+      { emoji: '🗑️', title: '완료 정리', desc: '오른쪽 상단 완료 항목 삭제로 체크된 것들을 한 번에 지울 수 있어요.' },
+    ],
+  },
+  share: {
+    title: '👥 공유',
+    steps: [
+      { emoji: '🔑', title: '내 코드 생성', desc: '공유 코드 생성 버튼을 눌러 6자리 코드를 만들어요. 이 코드를 룸메이트에게 알려주세요.' },
+      { emoji: '📥', title: '연결하기', desc: '룸메이트의 코드를 입력하고 연결 버튼을 누르면 양방향으로 즉시 연결돼요.' },
+      { emoji: '📊', title: '현황 비교', desc: '연결되면 나와 룸메이트의 오늘 달성률, 스트릭을 나란히 볼 수 있어요.' },
+    ],
+  },
+  settings: {
+    title: '⚙️ 설정',
+    steps: [
+      { emoji: '🐾', title: '캐릭터 & 테마', desc: '캐릭터 이모지와 앱 색상을 선택하면 즉시 반영돼요. 저장 버튼 없이 바로 저장돼요.' },
+      { emoji: '🎨', title: '섹션 색상', desc: '루틴·생활·청소 섹션마다 다른 색을 지정할 수 있어요.' },
+      { emoji: '🌙', title: '다크모드', desc: '토글을 켜면 어두운 화면으로 전환돼요. 눈이 편안한 네이비 계열 배경이에요.' },
+      { emoji: '🗑️', title: '계정 삭제', desc: '계정과 모든 데이터를 영구 삭제해요. 삭제 전 경고를 꼭 읽어주세요.' },
+    ],
+  },
+};
+
+// 가이드 모달 컴포넌트
+function GuideModal({pageId, onClose}) {
+  const theme = useTheme();
+  const guide = PAGE_GUIDES[pageId];
+  const [activeStep, setActiveStep] = React.useState(0);
+  if(!guide) return null;
+  const step = guide.steps[activeStep];
+  const isLast = activeStep === guide.steps.length - 1;
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:2000,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:C.card,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:480,padding:'28px 24px 36px',animation:'slideUp 0.25s ease'}}>
+        {/* 헤더 */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+          <div style={{fontSize:16,fontWeight:800,color:C.text}}>{guide.title} 사용법</div>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:C.muted,padding:0,width:'auto',margin:0}}>✕</button>
+        </div>
+
+        {/* 스텝 카드 */}
+        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:20,padding:'24px 22px',marginBottom:20,border:`1.5px solid ${theme.mid}`,minHeight:140}}>
+          <div style={{fontSize:36,marginBottom:10,lineHeight:1}}>{step.emoji}</div>
+          <div style={{fontSize:16,fontWeight:800,color:theme.primary,marginBottom:6}}>{step.title}</div>
+          <div style={{fontSize:14,color:C.text2,lineHeight:1.7}}>{step.desc}</div>
+        </div>
+
+        {/* 스텝 인디케이터 */}
+        <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:20}}>
+          {guide.steps.map((_,i)=>(
+            <button key={i} onClick={()=>setActiveStep(i)} style={{
+              width:i===activeStep?24:8,height:8,borderRadius:8,border:'none',cursor:'pointer',margin:0,padding:0,
+              background:i===activeStep?theme.primary:theme.mid,
+              transition:'all 0.25s',
+            }}/>
+          ))}
+        </div>
+
+        {/* 버튼 */}
+        <div style={{display:'flex',gap:8}}>
+          {activeStep > 0 && (
+            <button onClick={()=>setActiveStep(p=>p-1)} style={{
+              flex:1,padding:'13px',borderRadius:14,border:`1.5px solid ${C.border2}`,
+              background:C.card,color:C.text3,fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
+            }}>← 이전</button>
+          )}
+          <button onClick={()=>{ if(isLast) onClose(); else setActiveStep(p=>p+1); }} style={{
+            flex:2,padding:'13px',borderRadius:14,border:'none',
+            background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
+            boxShadow:`0 3px 12px ${theme.primary}44`,
+          }}>{isLast ? '닫기 ✓' : '다음 →'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 사용법 버튼 — 각 페이지 헤더에 붙이는 작은 ? 버튼
+function GuideBtn({pageId, style={}}) {
+  const theme = useTheme();
+  const [open, setOpen] = React.useState(false);
+  if(!PAGE_GUIDES[pageId]) return null;
+  return (
+    <>
+      <button onClick={()=>setOpen(true)} title="사용법 보기" style={{
+        width:28,height:28,borderRadius:'50%',border:`1.5px solid ${theme.mid}`,
+        background:theme.light,color:theme.primary,fontSize:13,fontWeight:800,
+        cursor:'pointer',margin:0,display:'flex',alignItems:'center',justifyContent:'center',
+        flexShrink:0,...style,
+      }}>?</button>
+      {open && <GuideModal pageId={pageId} onClose={()=>setOpen(false)}/>}
+    </>
+  );
+}
+
+
 const NAV=[
   {id:'home',    emoji:'🏠',label:'홈'},
   {id:'food',    emoji:'🥕',label:'식재료'},
@@ -1060,7 +1204,10 @@ function FoodPage({foods,onAdd,onDelete,onEdit,fb,user}) {
           <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🥕 식재료</div>
           <div style={{fontSize:13,color:C.muted}}>{foodTab==='fridge'?'유통기한을 한눈에 확인하세요':'필요한 것들을 미리 정리해요'}</div>
         </div>
-        {foodTab==='fridge'&&<Btn onClick={()=>{setAddForm({name:'',emoji:'',storage:'냉장',expiryDate:'',purchaseDate:getToday()});setShowAdd(true);}}>+ 추가</Btn>}
+        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+          <GuideBtn pageId='food'/>
+          {foodTab==='fridge'&&<Btn onClick={()=>{setAddForm({name:'',emoji:'',storage:'냉장',expiryDate:'',purchaseDate:getToday()});setShowAdd(true);}}>+ 추가</Btn>}
+        </div>
       </div>
 
       {/* ── 탭 ── */}
@@ -1613,6 +1760,7 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
             }}>{t.emoji}</button>
           ))}
           <div style={{width:1,height:20,background:theme.mid,margin:'0 2px'}}/>
+          <GuideBtn pageId='life'/>
           <Btn variant="outline" size="sm" onClick={()=>setShowPackModal(true)}>✨</Btn>
           <Btn size="sm" onClick={()=>openAdd('루틴')}>+ 추가</Btn>
         </div>
@@ -2046,7 +2194,10 @@ function ShoppingPage({foods, fb, user}) {
           <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🛒 장보기 목록</div>
           <div style={{fontSize:13,color:C.muted}}>필요한 것들을 미리 정리해요</div>
         </div>
-        {done.length>0&&<button onClick={clearDone} style={{fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>완료 항목 삭제</button>}
+        <div style={{display:'flex',gap:7,alignItems:'center'}}>
+          <GuideBtn pageId='shop'/>
+          {done.length>0&&<button onClick={clearDone} style={{fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>완료 항목 삭제</button>}
+        </div>
       </div>
 
       {/* 임박 식재료 자동 제안 */}
@@ -2521,9 +2672,12 @@ function MissionPage({streak, lifeItems, weeklyLog, animal, foods, fb, user}) {
 
   return (
     <div>
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🎯 미션 & 성장</div>
-        <div style={{fontSize:13,color:C.muted}}>이번 주 미션을 완료하고 성장해요</div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+        <div>
+          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🎯 미션 & 성장</div>
+          <div style={{fontSize:13,color:C.muted}}>이번 주 미션을 완료하고 성장해요</div>
+        </div>
+        <GuideBtn pageId='mission'/>
       </div>
 
       {/* 캐릭터 성장 카드 */}
@@ -2726,9 +2880,12 @@ function SharePage({fb, user, lifeItems, foods}) {
 
   return (
     <div>
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>👥 공유</div>
-        <div style={{fontSize:13,color:C.muted}}>룸메이트와 생활 관리를 함께해요</div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+        <div>
+          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>👥 공유</div>
+          <div style={{fontSize:13,color:C.muted}}>룸메이트와 생활 관리를 함께해요</div>
+        </div>
+        <GuideBtn pageId='share'/>
       </div>
 
       {msg&&<div style={{padding:'11px 16px',borderRadius:12,border:`1.5px solid ${msgColors[msgType].border}`,background:msgColors[msgType].bg,color:msgColors[msgType].color,fontSize:13,fontWeight:600,marginBottom:14}}>{msg}</div>}
@@ -3362,9 +3519,12 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
 
   return (
     <div>
-      <div style={{marginBottom:22}}>
-        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>⚙️ 설정</div>
-        <div style={{fontSize:13,color:C.muted}}>프로필과 앱 스타일을 바꿔요</div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
+        <div>
+          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>⚙️ 설정</div>
+          <div style={{fontSize:13,color:C.muted}}>프로필과 앱 스타일을 바꿔요</div>
+        </div>
+        <GuideBtn pageId='settings'/>
       </div>
 
       {/* 프로필 카드 */}
@@ -3562,10 +3722,14 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
 // ============================================================
 function Onboarding({userName, onComplete}) {
   const [step, setStep] = React.useState(0);
+  const [setupMode, setSetupMode] = React.useState(null);
   const [lifeChoice, setLifeChoice] = React.useState(null);
   const [selectedAnimal, setSelectedAnimal] = React.useState('🐻');
   const [selectedTheme, setSelectedTheme] = React.useState('purple');
+  const [showingGuide, setShowingGuide] = React.useState(false);
+  const [guidePageIdx, setGuidePageIdx] = React.useState(0);
 
+  const GUIDE_PAGES = ['home','food','life','mission'];
   const TOTAL_STEPS = 3;
   const theme = getTheme(selectedTheme);
 
@@ -3575,6 +3739,11 @@ function Onboarding({userName, onComplete}) {
     <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:'14px',borderRadius:16,border:'none',background:disabled?'#e5e7eb':theme.primary,color:disabled?'#9ca3af':'#fff',fontSize:15,fontWeight:700,cursor:disabled?'default':'pointer',transition:'all 0.2s',marginTop:6}}>
       {label}
     </button>
+  );
+  const dots = (active) => (
+    <div style={{display:'flex',gap:6,marginBottom:18}}>
+      {[0,1,2].map(i=><div key={i} style={{width:i===active?24:8,height:8,borderRadius:8,background:i===active?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
+    </div>
   );
 
   // Step 0: 웰컴
@@ -3589,7 +3758,7 @@ function Onboarding({userName, onComplete}) {
           딱 3단계만 설정하면<br/>나만의 생활 관리가 시작돼요
         </div>
         <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:24}}>
-          {[0,1,2].map(i=><div key={i} style={{width:i===step?24:8,height:8,borderRadius:8,background:i===step?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
+          {[0,1,2].map(i=><div key={i} style={{width:i===0?24:8,height:8,borderRadius:8,background:i===0?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
         </div>
         <button onClick={()=>setStep(1)} style={{width:'100%',padding:'15px',borderRadius:16,border:'none',background:theme.primary,color:C.card,fontSize:16,fontWeight:700,cursor:'pointer'}}>
           시작하기 →
@@ -3598,18 +3767,15 @@ function Onboarding({userName, onComplete}) {
     </div>
   );
 
-  // Step 1: 테마 색상 + 동물 선택
+  // Step 1: 테마 + 캐릭터
   if(step === 1) return (
     <div className="fade-in" style={bgStyle}>
       <div style={cardStyle}>
-        <div style={{display:'flex',gap:6,marginBottom:18}}>
-          {[0,1,2].map(i=><div key={i} style={{width:i===1?24:8,height:8,borderRadius:8,background:i===1?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
-        </div>
+        {dots(1)}
         <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 1 / 3</div>
         <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:3}}>나만의 스타일을 골라요</div>
         <div style={{fontSize:13,color:C.muted,marginBottom:18}}>앱의 색상과 캐릭터를 선택해요</div>
 
-        {/* 테마 색상 */}
         <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>🎨 메인 색상</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:8,marginBottom:20}}>
           {THEMES.map(t=>(
@@ -3637,7 +3803,6 @@ function Onboarding({userName, onComplete}) {
             }}>{a}</button>
           ))}
         </div>
-        {/* 미리보기 */}
         <div style={{background:theme.bg,borderRadius:14,padding:'12px 14px',border:`1.5px solid ${theme.mid}`,marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:24}}>{selectedAnimal}</span>
           <div>
@@ -3650,39 +3815,183 @@ function Onboarding({userName, onComplete}) {
     </div>
   );
 
-  // Step 2: 자취 경력
-  if(step === 2) {
-    const options = ['방금 이사', '1년 이상', '오래됨'];
-    const labels = ['방금 이사했어요', '자취한 지 1년 이상', '오래된 자취생이에요'];
-    const icons = ['🏠', '🌱', '🌳'];
-    const descs = ['기본 생활 루틴을 추천해드려요', '일반적인 생활 관리 세트를 설정해요', '전체 생활 관리 세트를 설정해요'];
+  // Step 2: 체크리스트 구성 방식 선택
+  if(step === 2) return (
+    <div className="fade-in" style={bgStyle}>
+      <div style={cardStyle}>
+        {dots(2)}
+        <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 2 / 3</div>
+        <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>체크리스트를 어떻게 시작할까요?</div>
+        <div style={{fontSize:13,color:C.muted,marginBottom:20}}>나중에 생활관리 페이지에서 자유롭게 수정할 수 있어요</div>
+
+        {/* 모드 선택 */}
+        {!setupMode ? (
+          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+            {/* 추천으로 시작 */}
+            <button onClick={()=>setSetupMode('preset')} style={{
+              padding:'18px 20px',borderRadius:16,border:`2px solid ${theme.mid}`,
+              background:theme.bg,cursor:'pointer',width:'100%',margin:0,textAlign:'left',
+              transition:'all 0.15s',display:'flex',alignItems:'flex-start',gap:14,
+            }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor=theme.primary}
+              onMouseLeave={e=>e.currentTarget.style.borderColor=theme.mid}
+            >
+              <span style={{fontSize:30,lineHeight:1,flexShrink:0}}>✨</span>
+              <div>
+                <div style={{fontSize:15,fontWeight:800,color:theme.primary,marginBottom:4}}>추천으로 시작하기</div>
+                <div style={{fontSize:12,color:C.text3,lineHeight:1.6}}>자취 경력에 맞게 루틴·청소·생활 항목을<br/>자동으로 설정해드려요</div>
+                <div style={{marginTop:6,display:'flex',gap:5,flexWrap:'wrap'}}>
+                  {['💧 물 마시기','🚽 화장실 청소','🧺 빨래','🗑️ 분리수거'].map(t=>(
+                    <span key={t} style={{fontSize:10,background:'rgba(255,255,255,0.8)',color:theme.primary,padding:'2px 8px',borderRadius:20,fontWeight:600}}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            </button>
+
+            {/* 직접 설정 */}
+            <button onClick={()=>{ setSetupMode('manual'); setLifeChoice('manual'); }} style={{
+              padding:'18px 20px',borderRadius:16,border:`2px solid ${C.border}`,
+              background:C.card,cursor:'pointer',width:'100%',margin:0,textAlign:'left',
+              transition:'all 0.15s',display:'flex',alignItems:'flex-start',gap:14,
+            }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor=theme.primary}
+              onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}
+            >
+              <span style={{fontSize:30,lineHeight:1,flexShrink:0}}>✏️</span>
+              <div>
+                <div style={{fontSize:15,fontWeight:800,color:C.text,marginBottom:4}}>직접 설정하기</div>
+                <div style={{fontSize:12,color:C.text3,lineHeight:1.6}}>빈 화면에서 시작해서<br/>원하는 항목을 하나씩 추가해요</div>
+              </div>
+            </button>
+          </div>
+        ) : setupMode === 'preset' ? (
+          // 자취 경력 선택
+          <div>
+            <button onClick={()=>setSetupMode(null)} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:12,padding:'0 0 12px 0',width:'auto',margin:0,display:'flex',alignItems:'center',gap:4}}>
+              ← 뒤로
+            </button>
+            <div style={{fontSize:14,fontWeight:700,color:C.text2,marginBottom:12}}>자취한 지 얼마나 됐어요?</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+              {[
+                {key:'방금 이사', icon:'🏠', label:'방금 이사했어요', desc:`${ONBOARDING_PRESETS['방금 이사'].length}개 항목 · 기본 루틴 위주`, count: ONBOARDING_PRESETS['방금 이사'].length},
+                {key:'1년 이상',  icon:'🌱', label:'자취한 지 1년 이상', desc:`${ONBOARDING_PRESETS['1년 이상'].length}개 항목 · 생활 관리 포함`, count: ONBOARDING_PRESETS['1년 이상'].length},
+                {key:'오래됨',   icon:'🌳', label:'오래된 자취생이에요', desc:`${ONBOARDING_PRESETS['오래됨'].length}개 항목 · 전체 세트`, count: ONBOARDING_PRESETS['오래됨'].length},
+              ].map(opt=>(
+                <button key={opt.key} onClick={()=>setLifeChoice(opt.key)} style={{
+                  padding:'14px 16px',borderRadius:14,
+                  border:`2px solid ${lifeChoice===opt.key?theme.primary:C.border}`,
+                  background:lifeChoice===opt.key?theme.bg:C.card,
+                  cursor:'pointer',width:'100%',margin:0,textAlign:'left',
+                  transition:'all 0.15s',display:'flex',alignItems:'center',gap:12,
+                }}>
+                  <span style={{fontSize:24}}>{opt.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:lifeChoice===opt.key?theme.primary:C.text}}>{opt.label}</div>
+                    <div style={{fontSize:11,color:C.muted,marginTop:1}}>{opt.desc}</div>
+                  </div>
+                  {lifeChoice===opt.key&&<span style={{fontSize:16,color:theme.primary}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            {/* 선택된 프리셋 미리보기 */}
+            {lifeChoice && lifeChoice !== 'manual' && (
+              <div style={{background:C.card2,borderRadius:12,padding:'12px 14px',marginBottom:12,maxHeight:140,overflowY:'auto'}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.text3,marginBottom:8}}>추가될 항목 미리보기</div>
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  {(ONBOARDING_PRESETS[lifeChoice]||[]).map((item,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:C.text3}}>
+                      <span>{item.emoji}</span>
+                      <span style={{flex:1}}>{item.text}</span>
+                      <span style={{fontSize:10,color:C.muted,background:C.card,padding:'1px 6px',borderRadius:20}}>
+                        {item.section}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {nextBtn(()=>{if(lifeChoice)setStep(3);}, !lifeChoice, '다음 →')}
+          </div>
+        ) : null}
+
+        {/* 직접 설정 → 바로 완료 */}
+        {setupMode === 'manual' && lifeChoice === 'manual' && (
+          <div style={{textAlign:'center',padding:'8px 0 4px'}}>
+            <div style={{fontSize:32,marginBottom:8}}>✏️</div>
+            <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:6}}>직접 설정을 선택했어요</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.7}}>
+              생활 관리 페이지에서<br/>루틴·청소·생활 항목을 자유롭게 추가해요
+            </div>
+            <button onClick={()=>setSetupMode(null)} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:12,marginBottom:12,width:'auto'}}>← 다시 선택</button>
+            {nextBtn(()=>setStep(3), false, '시작하기 →')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Step 3: 사용법 둘러보기
+  if(step === 3) {
+    const guideId = GUIDE_PAGES[guidePageIdx];
+    const guide = PAGE_GUIDES[guideId];
     return (
       <div className="fade-in" style={bgStyle}>
-        <div style={cardStyle}>
-          <div style={{display:'flex',gap:6,marginBottom:18}}>
-            {[0,1,2].map(i=><div key={i} style={{width:i===2?24:8,height:8,borderRadius:8,background:i===2?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
+        <div style={{...cardStyle, maxWidth:460}}>
+          {dots(2)}
+          <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 3 / 3</div>
+          <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>주요 기능을 살펴볼게요</div>
+          <div style={{fontSize:13,color:C.muted,marginBottom:16}}>나중에 각 페이지의 <strong style={{color:theme.primary}}>? 버튼</strong>으로 언제든지 다시 볼 수 있어요</div>
+          <div style={{display:'flex',gap:6,marginBottom:16,flexWrap:'wrap'}}>
+            {GUIDE_PAGES.map((pid,i)=>{
+              const g=PAGE_GUIDES[pid];
+              return (
+                <button key={pid} onClick={()=>setGuidePageIdx(i)} style={{
+                  padding:'6px 12px',borderRadius:20,border:`1.5px solid ${guidePageIdx===i?theme.primary:theme.mid}`,
+                  background:guidePageIdx===i?theme.primary:theme.bg,
+                  color:guidePageIdx===i?'#fff':theme.primary,
+                  fontSize:12,fontWeight:guidePageIdx===i?700:500,cursor:'pointer',width:'auto',margin:0,
+                }}>{g.title.split(' ').slice(0,2).join(' ')}</button>
+              );
+            })}
           </div>
-          <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 2 / 3</div>
-          <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>자취한 지 얼마나 됐어요?</div>
-          <div style={{fontSize:13,color:C.muted,marginBottom:18}}>선택에 맞게 생활 관리 항목을 자동으로 설정해드려요</div>
-          <div style={{display:'flex',flexDirection:'column',gap:9,marginBottom:18}}>
-            {options.map((opt,i)=>(
-              <button key={opt} onClick={()=>setLifeChoice(opt)} style={{padding:'14px 16px',borderRadius:15,border:`2px solid ${lifeChoice===opt?theme.primary:'#f3f4f6'}`,background:lifeChoice===opt?theme.bg:'#fafafa',cursor:'pointer',width:'100%',margin:0,textAlign:'left',transition:'all 0.15s',display:'flex',alignItems:'center',gap:12}}>
-                <span style={{fontSize:22}}>{icons[i]}</span>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:700,color:lifeChoice===opt?theme.primary:C.text}}>{labels[i]}</div>
-                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>{descs[i]}</div>
-                </div>
-                {lifeChoice===opt&&<span style={{fontSize:15,color:theme.primary}}>✓</span>}
-              </button>
-            ))}
+          <GuideInline guide={guide} theme={theme}/>
+          <div style={{display:'flex',gap:8,marginTop:16}}>
+            {guidePageIdx < GUIDE_PAGES.length-1 ? (
+              <button onClick={()=>setGuidePageIdx(p=>p+1)} style={{flex:2,padding:'13px',borderRadius:14,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>다음 기능 →</button>
+            ) : (
+              <button onClick={()=>onComplete(lifeChoice||'manual',selectedAnimal,selectedTheme)} style={{flex:2,padding:'13px',borderRadius:14,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,boxShadow:`0 4px 16px ${theme.primary}55`}}>🎉 시작하기!</button>
+            )}
+            <button onClick={()=>onComplete(lifeChoice||'manual',selectedAnimal,selectedTheme)} style={{flex:1,padding:'13px',borderRadius:14,border:`1.5px solid ${C.border2}`,background:C.card,color:C.text3,fontSize:13,fontWeight:600,cursor:'pointer',margin:0}}>건너뛰기</button>
           </div>
-          {nextBtn(()=>{if(lifeChoice)onComplete(lifeChoice,selectedAnimal,selectedTheme);}, !lifeChoice, '완료 →')}
         </div>
       </div>
     );
   }
   return null;
+}
+
+// 온보딩 인라인 가이드 슬라이더
+function GuideInline({guide, theme}) {
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(()=>setIdx(0),[guide]);
+  const step = guide.steps[idx];
+  return (
+    <div>
+      <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',border:`1.5px solid ${theme.mid}`,marginBottom:12,minHeight:130}}>
+        <div style={{fontSize:30,marginBottom:8,lineHeight:1}}>{step.emoji}</div>
+        <div style={{fontSize:15,fontWeight:800,color:theme.primary,marginBottom:5}}>{step.title}</div>
+        <div style={{fontSize:13,color:C.text2,lineHeight:1.7}}>{step.desc}</div>
+      </div>
+      <div style={{display:'flex',gap:5,justifyContent:'center'}}>
+        {guide.steps.map((_,i)=>(
+          <button key={i} onClick={()=>setIdx(i)} style={{
+            width:i===idx?20:7,height:7,borderRadius:7,border:'none',cursor:'pointer',margin:0,padding:0,
+            background:i===idx?theme.primary:theme.mid,transition:'all 0.2s',
+          }}/>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ============================================================
@@ -3840,7 +4149,8 @@ function App() {
   async function completeOnboarding(choice, chosenAnimal, chosenTheme) {
     if(!fb||!user) return;
     const uid = user.uid;
-    const presets = (ONBOARDING_PRESETS[choice]||[]).map((item,i) => ({
+    // 'manual' 선택 시 프리셋 없이 시작
+    const presets = choice === 'manual' ? [] : (ONBOARDING_PRESETS[choice]||[]).map(item => ({
       ...item, done:false, lastDone:null, freqDays:[], createdAt:new Date().toISOString()
     }));
     await fb.setDoc(fb.doc(fb.db,'users',uid), {
