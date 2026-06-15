@@ -544,7 +544,6 @@ const NAV=[
   {id:'home',    emoji:'🏠',label:'홈'},
   {id:'food',    emoji:'🥕',label:'식재료'},
   {id:'life',    emoji:'🌀',label:'생활 관리'},
-  {id:'reflect', emoji:'🪞',label:'나를 돌아보기'},
   {id:'hub',     emoji:'🔖',label:'추천'},
   {id:'tips',    emoji:'💡',label:'생활 팁'},
   {id:'share',   emoji:'👥',label:'공유'},
@@ -952,25 +951,6 @@ function HomePage({foods,lifeItems,streak,weeklyLog,onNav,userName,onQuickAdd,on
         </div>
       </div>
 
-      {/* ⑥-2 나를 돌아보기 */}
-      <div style={{marginBottom:18}}>
-        <button onClick={()=>onNav('reflect')} style={{
-          width:'100%',padding:'16px 20px',borderRadius:20,border:`2px solid ${theme.mid}`,
-          background:`linear-gradient(135deg,${theme.bg},${theme.light})`,
-          display:'flex',alignItems:'center',gap:14,cursor:'pointer',
-          boxShadow:`0 3px 12px ${theme.primary}18`,transition:'all 0.18s',
-          margin:0,
-        }}
-        onMouseEnter={e=>{e.currentTarget.style.borderColor=theme.primary;e.currentTarget.style.boxShadow=`0 5px 18px ${theme.primary}33`;}}
-        onMouseLeave={e=>{e.currentTarget.style.borderColor=theme.mid;e.currentTarget.style.boxShadow=`0 3px 12px ${theme.primary}18`;}}
-        >
-          <div style={{width:46,height:46,borderRadius:14,background:theme.primary,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>🪞</div>
-          <div style={{flex:1,textAlign:'left'}}>
-            <div style={{fontSize:15,fontWeight:800,color:theme.primary}}>나를 돌아보기</div>
-            <div style={{fontSize:12,color:C.muted,marginTop:2}}>오늘 하루를 기록하고 감정을 돌아봐요</div>
-          </div>
-          <span style={{fontSize:18,color:theme.border,opacity:0.7}}>›</span>
-        </button>
       </div>
 
       {/* ⑦ 이번 주 */}
@@ -2040,7 +2020,6 @@ function ShoppingPage({foods, fb, user}) {
   const [items, setItems] = React.useState([]);
   const [input, setInput] = React.useState('');
   const [category, setCategory] = React.useState('기타');
-  const [shopTab, setShopTab] = React.useState('list'); // 'list' | 'repurchase' | 'recipe'
   const [recipeOpen, setRecipeOpen] = React.useState(null);
 
   // Firestore 실시간
@@ -2053,8 +2032,8 @@ function ShoppingPage({foods, fb, user}) {
   }, [fb, user]);
 
   async function addItem(text, cat, emoji) {
-    if((!text&&!input.trim())||!fb||!user) return;
-    const t = text || input.trim();
+    const t = (text || input).trim();
+    if(!t||!fb||!user) return;
     await fb.addDoc(fb.collection(fb.db,'users',user.uid,'shoppingItems'), {
       text: t, category: cat||category, done: false, createdAt: new Date().toISOString(), emoji: emoji||''
     });
@@ -2070,206 +2049,166 @@ function ShoppingPage({foods, fb, user}) {
   }
   async function clearDone() {
     if(!fb||!user) return;
-    const done = items.filter(i=>i.done);
-    await Promise.all(done.map(i => fb.deleteDoc(fb.doc(fb.db,'users',user.uid,'shoppingItems',i.id))));
+    const donelist = items.filter(i=>i.done);
+    await Promise.all(donelist.map(i => fb.deleteDoc(fb.doc(fb.db,'users',user.uid,'shoppingItems',i.id))));
   }
   async function addRecipeIngredients(recipe) {
     if(!fb||!user) return;
     for(const ing of recipe.ingredients) {
-      if(!items.some(i=>i.text.includes(ing))) {
+      if(!items.some(i=>i.text===ing)) {
         await fb.addDoc(fb.collection(fb.db,'users',user.uid,'shoppingItems'), {
-          text:ing, category:'과일/채소', done:false, createdAt:new Date().toISOString(), emoji:'', recipeTag:recipe.name
+          text:ing, category:'기타', done:false, createdAt:new Date().toISOString(), emoji:'', recipeTag:recipe.name
         });
       }
     }
     setRecipeOpen(null);
   }
 
-  // 유통기한 임박 (D-5 이하) → 재구매 추천
+  // 유통기한 임박(D-5 이하) → 재구매 추천
   const repurchaseSuggestions = foods
     .map(f=>({...f, dl:calcDaysLeft(f.expiryDate)}))
     .filter(f=>f.dl<=5&&f.dl>=0)
+    .filter(f=>!items.some(i=>i.text===f.name))
     .sort((a,b)=>a.dl-b.dl);
-
-  // 임박(D-2) 자동 장보기 제안
-  const autoSuggestions = foods
-    .map(f=>({...f, dl:calcDaysLeft(f.expiryDate)}))
-    .filter(f=>f.dl<=2&&f.dl>=0)
-    .filter(f=>!items.some(i=>i.text.includes(f.name)));
 
   const undone = items.filter(i=>!i.done).sort((a,b)=>SHOP_CATEGORIES.indexOf(a.category)-SHOP_CATEGORIES.indexOf(b.category));
   const done = items.filter(i=>i.done);
   const byCategory = SHOP_CATEGORIES.map(cat=>({cat, items: undone.filter(i=>i.category===cat)})).filter(g=>g.items.length>0);
 
-  const tabStyle = (id) => ({
-    flex:1,padding:'9px 4px',borderRadius:12,border:`2px solid ${shopTab===id?theme.primary:theme.mid}`,
-    background:shopTab===id?theme.primary:theme.bg,cursor:'pointer',width:'auto',margin:0,
-    fontSize:11,fontWeight:700,color:shopTab===id?'#fff':theme.primary,
-    display:'flex',alignItems:'center',justifyContent:'center',gap:4,transition:'all 0.15s',
-  });
-
   return (
     <div>
-      {/* 탭 */}
-      <div style={{display:'flex',gap:6,marginBottom:16}}>
-        <button style={tabStyle('list')} onClick={()=>setShopTab('list')}>🛒 장보기 목록</button>
-        <button style={tabStyle('repurchase')} onClick={()=>setShopTab('repurchase')}>
-          🔄 재구매 추천
-          {repurchaseSuggestions.length>0&&<span style={{background:'#ef4444',color:'#fff',borderRadius:20,padding:'0 5px',fontSize:10}}>{repurchaseSuggestions.length}</span>}
-        </button>
-        <button style={tabStyle('recipe')} onClick={()=>setShopTab('recipe')}>🍽️ 레시피</button>
+      {/* 헤더 */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <div style={{fontSize:13,color:C.muted}}>필요한 것들을 미리 정리해요</div>
+        {done.length>0&&<button onClick={clearDone} style={{fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>완료 삭제</button>}
       </div>
 
-      {/* ── 장보기 목록 탭 ── */}
-      {shopTab==='list'&&(<div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-          <div style={{fontSize:13,color:C.muted}}>필요한 것들을 미리 정리해요</div>
-          {done.length>0&&<button onClick={clearDone} style={{fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>완료 항목 삭제</button>}
+      {/* 입력 */}
+      <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
+        <div style={{display:'flex',gap:7,marginBottom:8}}>
+          <input value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&addItem()}
+            placeholder="항목 입력 후 Enter"
+            style={{flex:1,padding:'10px 13px',border:`1.5px solid ${theme.mid}`,borderRadius:11,fontSize:14,outline:'none',background:C.input}}
+            onFocus={e=>e.target.style.borderColor=theme.primary}
+            onBlur={e=>e.target.style.borderColor=theme.mid}
+          />
+          <button onClick={()=>addItem()} style={{padding:'10px 16px',borderRadius:11,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>
         </div>
+        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+          {SHOP_CATEGORIES.map(c=>(
+            <button key={c} onClick={()=>setCategory(c)} style={{padding:'4px 10px',borderRadius:20,border:`1.5px solid ${category===c?theme.primary:'#e5e7eb'}`,background:category===c?theme.light:C.card,color:category===c?theme.primary:'#6b7280',fontSize:11,fontWeight:category===c?700:400,cursor:'pointer',width:'auto',margin:0}}>{c}</button>
+          ))}
+        </div>
+      </div>
 
-        {/* 임박 식재료 자동 제안 */}
-        {autoSuggestions.length>0&&(
-          <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:16,padding:'14px 16px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
-            <div style={{fontSize:12,fontWeight:700,color:'#ea580c',marginBottom:8}}>🔔 곧 소진될 것들 — 장바구니에 추가할까요?</div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-              {autoSuggestions.map(f=>(
-                <button key={f.id} onClick={()=>addItem(f.name,'기타',f.emoji)} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 11px',borderRadius:20,border:'1.5px solid #fed7aa',background:C.card,cursor:'pointer',fontSize:12,fontWeight:600,color:'#ea580c',width:'auto',margin:0}}>
-                  {f.emoji} {f.name} <span style={{fontSize:10,opacity:0.7}}>D-{f.dl}</span> +
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* 목록 비어있을 때 */}
+      {undone.length===0&&done.length===0&&(
+        <div style={{background:C.card,borderRadius:16,padding:'28px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`,marginBottom:14}}>
+          <div style={{fontSize:36,marginBottom:8}}>🛒</div>
+          <div style={{fontSize:14,fontWeight:600}}>장보기 목록이 비어있어요</div>
+          <div style={{fontSize:12,marginTop:4}}>필요한 것들을 추가하거나 아래 추천을 활용해봐요</div>
+        </div>
+      )}
 
-        {/* 입력 */}
-        <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
-          <div style={{display:'flex',gap:7,marginBottom:8}}>
-            <input value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>e.key==='Enter'&&addItem()}
-              placeholder="항목 입력 후 Enter"
-              style={{flex:1,padding:'10px 13px',border:`1.5px solid ${theme.mid}`,borderRadius:11,fontSize:14,outline:'none',background:C.input}}
-              onFocus={e=>e.target.style.borderColor=theme.primary}
-              onBlur={e=>e.target.style.borderColor=theme.mid}
-            />
-            <button onClick={()=>addItem()} style={{padding:'10px 16px',borderRadius:11,border:'none',background:theme.primary,color:C.card,fontSize:14,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>
-          </div>
-          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-            {SHOP_CATEGORIES.map(c=>(
-              <button key={c} onClick={()=>setCategory(c)} style={{padding:'4px 10px',borderRadius:20,border:`1.5px solid ${category===c?theme.primary:'#e5e7eb'}`,background:category===c?theme.light:C.card,color:category===c?theme.primary:'#6b7280',fontSize:11,fontWeight:category===c?700:400,cursor:'pointer',width:'auto',margin:0}}>{c}</button>
+      {/* 미완료 — 카테고리별 */}
+      {byCategory.map(({cat,items:catItems})=>(
+        <div key={cat} style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.text2,marginBottom:8}}>{cat} <span style={{color:C.muted,fontWeight:400}}>({catItems.length})</span></div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {catItems.map(item=>(
+              <div key={item.id} style={{display:'flex',alignItems:'center',gap:10}}>
+                <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:'transparent',border:`2px solid #d1d5db`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}/>
+                <span style={{flex:1,fontSize:14,color:C.text}}>{item.emoji||''} {item.text}</span>
+                {item.recipeTag&&<span style={{fontSize:10,color:theme.primary,background:theme.light,padding:'1px 7px',borderRadius:20,border:`1px solid ${theme.mid}`,whiteSpace:'nowrap'}}>{item.recipeTag}</span>}
+                <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#d1d5db'}>✕</button>
+              </div>
             ))}
           </div>
         </div>
+      ))}
 
-        {/* 미완료 목록 */}
-        {undone.length===0&&done.length===0&&(
-          <div style={{background:C.card,borderRadius:16,padding:'32px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:36,marginBottom:8}}>🛒</div>
-            <div style={{fontSize:14,fontWeight:600}}>장보기 목록이 비어있어요</div>
-            <div style={{fontSize:12,marginTop:4}}>필요한 것들을 추가해봐요</div>
-          </div>
-        )}
-        {byCategory.map(({cat,items:catItems})=>(
-          <div key={cat} style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.text2,marginBottom:8}}>{cat} <span style={{color:C.muted,fontWeight:400}}>({catItems.length})</span></div>
-            <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {catItems.map(item=>(
-                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10}}>
-                  <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:item.done?theme.primary:'transparent',border:`2px solid ${item.done?theme.primary:'#d1d5db'}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
-                    {item.done&&<span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>}
-                  </div>
-                  <span style={{flex:1,fontSize:14,color:item.done?C.muted:C.text,textDecoration:item.done?'line-through':'none'}}>{item.emoji||''} {item.text}</span>
-                  {item.recipeTag&&<span style={{fontSize:10,color:theme.primary,background:theme.light,padding:'1px 7px',borderRadius:20,border:`1px solid ${theme.mid}`}}>{item.recipeTag}</span>}
-                  <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#d1d5db'}>✕</button>
+      {/* 완료된 항목 */}
+      {done.length>0&&(
+        <div style={{background:C.card2,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${C.border}`,marginBottom:14}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:8}}>✓ 완료 ({done.length})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {done.map(item=>(
+              <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,opacity:0.55}}>
+                <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:theme.primary,border:`2px solid ${theme.primary}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>
                 </div>
-              ))}
-            </div>
+                <span style={{flex:1,fontSize:14,color:C.muted,textDecoration:'line-through'}}>{item.text}</span>
+                <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}}>✕</button>
+              </div>
+            ))}
           </div>
-        ))}
-        {done.length>0&&(
-          <div style={{background:C.card2,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:8}}>✓ 완료 ({done.length})</div>
-            <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {done.map(item=>(
-                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,opacity:0.6}}>
-                  <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:theme.primary,border:`2px solid ${theme.primary}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>
-                  </div>
-                  <span style={{flex:1,fontSize:14,color:C.muted,textDecoration:'line-through'}}>{item.text}</span>
-                  <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}}>✕</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>)}
-
-      {/* ── 재구매 추천 탭 ── */}
-      {shopTab==='repurchase'&&(<div>
-        <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:18,padding:'16px 18px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#ea580c',marginBottom:4}}>🔄 유통기한 임박 → 재구매 추천</div>
-          <div style={{fontSize:12,color:'#9a3412'}}>유통기한이 가까운 식재료를 다시 구매해야 할 때 알려드려요</div>
         </div>
-        {repurchaseSuggestions.length===0?(
-          <div style={{background:C.card,borderRadius:16,padding:'32px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:36,marginBottom:8}}>✅</div>
-            <div style={{fontSize:14,fontWeight:600}}>임박한 식재료가 없어요</div>
-            <div style={{fontSize:12,marginTop:4}}>냉장고가 안전해요!</div>
-          </div>
-        ):(
+      )}
+
+      {/* ── 구분선 ── */}
+      <div style={{display:'flex',alignItems:'center',gap:10,margin:'20px 0 16px'}}>
+        <div style={{flex:1,height:1,background:C.border2}}/>
+        <span style={{fontSize:12,color:C.muted,fontWeight:600,whiteSpace:'nowrap'}}>✨ 스마트 추천</span>
+        <div style={{flex:1,height:1,background:C.border2}}/>
+      </div>
+
+      {/* 재구매 추천 */}
+      {repurchaseSuggestions.length>0&&(
+        <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:18,padding:'16px 18px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#ea580c',marginBottom:10}}>🔄 유통기한 임박 — 재구매 추천</div>
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {repurchaseSuggestions.map(f=>{
-              const isAdded = items.some(i=>i.text.includes(f.name));
               const dlColor = f.dl<=1?'#ef4444':f.dl<=3?'#f97316':'#eab308';
               const dlBg = f.dl<=1?'#fef2f2':f.dl<=3?'#fff7ed':'#fefce8';
               return (
-                <div key={f.id} style={{background:C.card,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${dlBg}`,display:'flex',alignItems:'center',gap:12}}>
-                  <div style={{width:44,height:44,borderRadius:12,background:dlBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{f.emoji}</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{f.name}</div>
-                    <div style={{display:'flex',gap:6,marginTop:3,alignItems:'center'}}>
-                      <span style={{fontSize:11,fontWeight:700,color:dlColor,background:dlBg,padding:'1px 7px',borderRadius:20}}>D-{f.dl}</span>
-                      <span style={{fontSize:11,color:C.muted}}>{f.storage} 보관</span>
+                <div key={f.id} style={{background:'rgba(255,255,255,0.7)',borderRadius:12,padding:'10px 13px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:20,flexShrink:0}}>{f.emoji}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:'#1f2937'}}>{f.name}</div>
+                    <div style={{display:'flex',gap:5,marginTop:2,alignItems:'center'}}>
+                      <span style={{fontSize:10,fontWeight:700,color:dlColor,background:dlBg,padding:'1px 6px',borderRadius:20}}>D-{f.dl}</span>
+                      <span style={{fontSize:10,color:'#6b7280'}}>{f.storage}</span>
                     </div>
                   </div>
-                  <button onClick={()=>!isAdded&&addItem(f.name,'기타',f.emoji)} style={{
-                    padding:'7px 14px',borderRadius:11,border:`1.5px solid ${isAdded?'#22c55e':theme.primary}`,
-                    background:isAdded?'#f0fdf4':theme.primary,color:isAdded?'#16a34a':'#fff',
-                    fontSize:12,fontWeight:700,cursor:isAdded?'default':'pointer',width:'auto',margin:0,
-                  }}>{isAdded?'✓ 추가됨':'+ 추가'}</button>
+                  <button onClick={()=>addItem(f.name,'기타',f.emoji)} style={{
+                    padding:'6px 12px',borderRadius:20,border:'1.5px solid #fed7aa',
+                    background:'#fff',color:'#ea580c',fontSize:11,fontWeight:700,cursor:'pointer',width:'auto',margin:0,whiteSpace:'nowrap'
+                  }}>+ 추가</button>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>)}
-
-      {/* ── 레시피 기반 탭 ── */}
-      {shopTab==='recipe'&&(<div>
-        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'16px 18px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
-          <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:4}}>🍽️ 레시피 기반 자동 장보기</div>
-          <div style={{fontSize:12,color:C.muted}}>요리를 선택하면 필요한 재료를 바로 추가해요</div>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
+      )}
+
+      {/* 레시피 기반 추천 */}
+      <div style={{background:C.card,borderRadius:18,padding:'16px 18px',border:`1.5px solid ${C.border}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:12}}>🍽️ 레시피 기반 자동 추가</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
           {RECIPE_PRESETS.map(recipe=>{
-            const missingCount = recipe.ingredients.filter(ing=>!foods.some(f=>f.name.includes(ing))||foods.some(f=>f.name.includes(ing)&&calcDaysLeft(f.expiryDate)<=0)).length;
+            const missingCount = recipe.ingredients.filter(ing=>
+              !foods.some(f=>f.name.includes(ing)&&calcDaysLeft(f.expiryDate)>0)
+            ).length;
             const isOpen = recipeOpen===recipe.name;
             return (
-              <div key={recipe.name} style={{background:C.card,borderRadius:16,border:`1.5px solid ${isOpen?theme.primary:C.border}`,overflow:'hidden',transition:'all 0.15s',cursor:'pointer'}} onClick={()=>setRecipeOpen(isOpen?null:recipe.name)}>
-                <div style={{padding:'14px 15px'}}>
-                  <div style={{fontSize:26,marginBottom:6}}>{recipe.emoji}</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:4}}>{recipe.name}</div>
-                  <div style={{fontSize:11,color:C.muted}}>{recipe.ingredients.length}가지 재료</div>
-                  {missingCount>0&&<div style={{marginTop:4,fontSize:10,fontWeight:700,color:'#ea580c',background:'#fff7ed',padding:'2px 7px',borderRadius:20,display:'inline-block'}}>부족 {missingCount}개</div>}
+              <div key={recipe.name} style={{borderRadius:14,border:`1.5px solid ${isOpen?theme.primary:C.border2}`,overflow:'hidden',transition:'all 0.15s',cursor:'pointer',background:isOpen?theme.bg:C.card}} onClick={()=>setRecipeOpen(isOpen?null:recipe.name)}>
+                <div style={{padding:'12px 13px',display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:22,flexShrink:0}}>{recipe.emoji}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.text}}>{recipe.name}</div>
+                    <div style={{fontSize:10,color:C.muted,marginTop:1}}>{recipe.ingredients.length}가지</div>
+                    {missingCount>0&&<div style={{fontSize:9,fontWeight:700,color:'#ea580c',marginTop:2}}>부족 {missingCount}개</div>}
+                  </div>
                 </div>
                 {isOpen&&(
-                  <div style={{borderTop:`1px solid ${C.border}`,padding:'12px 15px',background:theme.bg}}>
-                    <div style={{fontSize:11,fontWeight:700,color:C.text2,marginBottom:8}}>필요한 재료</div>
-                    <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>
+                  <div style={{borderTop:`1px solid ${C.border}`,padding:'10px 13px',background:theme.bg}} onClick={e=>e.stopPropagation()}>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
                       {recipe.ingredients.map(ing=>{
                         const have = foods.some(f=>f.name.includes(ing)&&calcDaysLeft(f.expiryDate)>0);
-                        const inCart = items.some(i=>i.text.includes(ing));
+                        const inCart = items.some(i=>i.text===ing);
                         return (
-                          <span key={ing} style={{fontSize:11,padding:'3px 9px',borderRadius:20,fontWeight:600,
+                          <span key={ing} style={{fontSize:10,padding:'2px 7px',borderRadius:20,fontWeight:600,
                             background:have?'#f0fdf4':inCart?theme.light:'#fef2f2',
                             color:have?'#16a34a':inCart?theme.primary:'#ef4444',
                             border:`1px solid ${have?'#bbf7d0':inCart?theme.mid:'#fecaca'}`
@@ -2279,17 +2218,17 @@ function ShoppingPage({foods, fb, user}) {
                         );
                       })}
                     </div>
-                    <button onClick={e=>{e.stopPropagation();addRecipeIngredients(recipe);}} style={{
-                      width:'100%',padding:'9px',borderRadius:11,border:'none',
-                      background:theme.primary,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',margin:0,
-                    }}>없는 재료 장바구니에 추가</button>
+                    <button onClick={()=>addRecipeIngredients(recipe)} style={{
+                      width:'100%',padding:'8px',borderRadius:10,border:'none',
+                      background:theme.primary,color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',margin:0,
+                    }}>없는 재료 목록에 추가</button>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </div>)}
+      </div>
     </div>
   );
 }
@@ -2445,199 +2384,6 @@ function ReportPage({weeklyLog, lifeItems, foods, streak}) {
               </div>
             ))}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// 나를 돌아보기 페이지
-// ============================================================
-const REFLECT_QUESTIONS = [
-  {id:'q1', emoji:'☀️', text:'오늘 가장 잘한 일은 무엇인가요?', placeholder:'작은 것이라도 좋아요'},
-  {id:'q2', emoji:'😔', text:'오늘 아쉬웠거나 힘들었던 점은?', placeholder:'솔직하게 털어놓아요'},
-  {id:'q3', emoji:'💪', text:'내일은 어떻게 더 잘해볼 수 있을까요?', placeholder:'작은 다짐이라도 OK'},
-  {id:'q4', emoji:'🌟', text:'오늘 감사했던 순간이 있나요?', placeholder:'사람, 음식, 날씨 무엇이든'},
-  {id:'q5', emoji:'🎯', text:'오늘 목표한 것을 달성했나요?', placeholder:'달성률이나 느낌을 써봐요'},
-];
-const MOODS_REFLECT = ['😊','😄','😐','😔','😴','🔥','💪','🥺','😤','🌟'];
-
-function ReflectPage({fb, user, lifeItems, weeklyLog, streak}) {
-  const theme = useTheme();
-  const [memos, setMemos] = React.useState([]);
-  const [selectedDate, setSelectedDate] = React.useState(getToday());
-  const [answers, setAnswers] = React.useState({});
-  const [mood, setMood] = React.useState('😊');
-  const [saving, setSaving] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState('write'); // 'write' | 'history'
-  const [saved, setSaved] = React.useState(false);
-
-  React.useEffect(()=>{
-    if(!fb||!user) return;
-    const unsub = fb.onSnapshot(fb.collection(fb.db,'users',user.uid,'reflects'), snap=>{
-      setMemos(snap.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>b.date.localeCompare(a.date)));
-    });
-    return ()=>unsub();
-  },[fb,user]);
-
-  React.useEffect(()=>{
-    const existing = memos.find(m=>m.date===selectedDate);
-    setAnswers(existing?.answers||{});
-    setMood(existing?.mood||'😊');
-    setSaved(false);
-  },[selectedDate, memos]);
-
-  async function saveReflect() {
-    if(!fb||!user) return;
-    const hasContent = Object.values(answers).some(v=>v.trim());
-    if(!hasContent) return;
-    setSaving(true);
-    const existing = memos.find(m=>m.date===selectedDate);
-    if(existing) {
-      await fb.updateDoc(fb.doc(fb.db,'users',user.uid,'reflects',existing.id), {answers,mood,updatedAt:new Date().toISOString()});
-    } else {
-      await fb.addDoc(fb.collection(fb.db,'users',user.uid,'reflects'), {date:selectedDate,answers,mood,createdAt:new Date().toISOString()});
-    }
-    setSaving(false);
-    setSaved(true);
-    setTimeout(()=>setSaved(false),2000);
-  }
-
-  function dateLabel2(ds) {
-    const d=new Date(ds+'T00:00:00');
-    const days=['일','월','화','수','목','금','토'];
-    return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
-  }
-
-  const todayStr = getToday();
-  const todayDue = lifeItems.filter(c=>isDueOn(c,todayStr));
-  const todayDoneCount = todayDue.filter(c=>isDoneOn(c,todayStr)).length;
-  const lifePct = todayDue.length ? Math.round(todayDoneCount/todayDue.length*100) : 0;
-  const streakCount = (streak||{count:0}).count;
-
-  return (
-    <div style={{paddingBottom:40}}>
-      {/* 헤더 */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
-        <div>
-          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🪞 나를 돌아보기</div>
-          <div style={{fontSize:13,color:C.muted}}>하루를 기록하고 나를 이해해요</div>
-        </div>
-        <div style={{display:'flex',gap:6}}>
-          <button onClick={()=>setViewMode('write')} style={{padding:'6px 12px',borderRadius:20,border:`1.5px solid ${viewMode==='write'?theme.primary:'#e5e7eb'}`,background:viewMode==='write'?theme.light:C.card,color:viewMode==='write'?theme.primary:'#9ca3af',fontSize:12,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>✏️ 기록</button>
-          <button onClick={()=>setViewMode('history')} style={{padding:'6px 12px',borderRadius:20,border:`1.5px solid ${viewMode==='history'?theme.primary:'#e5e7eb'}`,background:viewMode==='history'?theme.light:C.card,color:viewMode==='history'?theme.primary:'#9ca3af',fontSize:12,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>📖 기록 보기</button>
-        </div>
-      </div>
-
-      {viewMode==='write'&&(
-        <div>
-          {/* 오늘 요약 카드 */}
-          <div style={{background:`linear-gradient(135deg,${theme.primary},${theme.border})`,borderRadius:20,padding:'18px 20px',marginBottom:16,color:'#fff'}}>
-            <div style={{fontSize:12,opacity:0.8,marginBottom:6}}>{dateLabel2(todayStr)} 요약</div>
-            <div style={{display:'flex',gap:20,alignItems:'center'}}>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontSize:22,fontWeight:800}}>{lifePct}%</div>
-                <div style={{fontSize:10,opacity:0.75}}>오늘 달성률</div>
-              </div>
-              <div style={{width:1,height:36,background:'rgba(255,255,255,0.3)'}}/>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontSize:22,fontWeight:800}}>🔥{streakCount}</div>
-                <div style={{fontSize:10,opacity:0.75}}>연속 달성</div>
-              </div>
-              <div style={{width:1,height:36,background:'rgba(255,255,255,0.3)'}}/>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontSize:22,fontWeight:800}}>{todayDoneCount}/{todayDue.length}</div>
-                <div style={{fontSize:10,opacity:0.75}}>완료 항목</div>
-              </div>
-            </div>
-          </div>
-
-          {/* 날짜 선택 */}
-          <div style={{background:C.card,borderRadius:14,padding:'11px 15px',marginBottom:12,border:`1.5px solid ${C.border}`,display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:14}}>📅</span>
-            <input type="date" value={selectedDate} max={getToday()} onChange={e=>setSelectedDate(e.target.value)}
-              style={{border:'none',background:'transparent',fontSize:14,fontWeight:700,color:C.text,outline:'none',cursor:'pointer'}}/>
-            {memos.some(m=>m.date===selectedDate)&&<span style={{fontSize:11,color:theme.primary,background:theme.light,padding:'2px 8px',borderRadius:20,fontWeight:700}}>기록 있음</span>}
-          </div>
-
-          {/* 기분 선택 */}
-          <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:12,border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:8}}>오늘 기분은? {mood}</div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-              {MOODS_REFLECT.map(m=>(
-                <button key={m} onClick={()=>setMood(m)} style={{
-                  width:38,height:38,borderRadius:10,fontSize:20,border:`2px solid ${mood===m?theme.primary:'#f3f4f6'}`,
-                  background:mood===m?theme.light:C.card,cursor:'pointer',margin:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'
-                }}>{m}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* 질문 카드들 */}
-          {REFLECT_QUESTIONS.map((q,i)=>(
-            <div key={q.id} style={{background:C.card,borderRadius:16,padding:'15px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                <span style={{fontSize:18}}>{q.emoji}</span>
-                <span style={{fontSize:13,fontWeight:700,color:C.text}}>{q.text}</span>
-              </div>
-              <textarea
-                value={answers[q.id]||''}
-                onChange={e=>setAnswers(p=>({...p,[q.id]:e.target.value}))}
-                placeholder={q.placeholder}
-                rows={2}
-                style={{width:'100%',border:`1.5px solid ${C.border2}`,borderRadius:10,padding:'10px 12px',fontSize:13,lineHeight:1.6,resize:'vertical',outline:'none',background:C.input,color:C.text,boxSizing:'border-box'}}
-                onFocus={e=>e.target.style.borderColor=theme.primary}
-                onBlur={e=>e.target.style.borderColor=C.border2}
-              />
-            </div>
-          ))}
-
-          <button onClick={saveReflect} disabled={saving} style={{
-            width:'100%',padding:'15px',borderRadius:16,border:'none',
-            background:`linear-gradient(135deg,${theme.primary},${theme.border})`,
-            color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',margin:0,
-            boxShadow:`0 4px 14px ${theme.primary}44`,
-            opacity:saving?0.7:1,
-          }}>
-            {saved?'✅ 저장됐어요!':saving?'저장 중...':'기록 저장'}
-          </button>
-        </div>
-      )}
-
-      {viewMode==='history'&&(
-        <div>
-          {memos.length===0?(
-            <div style={{background:C.card,borderRadius:16,padding:'40px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
-              <div style={{fontSize:40,marginBottom:10}}>🪞</div>
-              <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>아직 기록이 없어요</div>
-              <div style={{fontSize:12}}>오늘 하루를 돌아보고 첫 기록을 남겨보세요</div>
-            </div>
-          ):(
-            <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              {memos.map(m=>(
-                <div key={m.id} style={{background:C.card,borderRadius:18,padding:'16px 18px',border:`1.5px solid ${C.border}`}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-                    <span style={{fontSize:24}}>{m.mood||'😊'}</span>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:700,color:C.text}}>{dateLabel2(m.date)}</div>
-                      <div style={{fontSize:11,color:C.muted}}>{m.date}</div>
-                    </div>
-                  </div>
-                  {m.answers&&Object.entries(m.answers).filter(([,v])=>v.trim()).map(([qid,ans])=>{
-                    const q = REFLECT_QUESTIONS.find(q=>q.id===qid);
-                    if(!q) return null;
-                    return (
-                      <div key={qid} style={{marginBottom:8,padding:'10px 12px',background:C.card2,borderRadius:10}}>
-                        <div style={{fontSize:11,fontWeight:700,color:theme.primary,marginBottom:3}}>{q.emoji} {q.text}</div>
-                        <div style={{fontSize:12,color:C.text2,lineHeight:1.6}}>{ans}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -4084,7 +3830,7 @@ function App() {
   const [page, setPage] = React.useState('home');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const {isMob, isTablet} = useResponsive();
-  const PAGE_TITLES = {home:'🏠 홈', food:'🥕 식재료', life:'🌀 생활 관리', reflect:'🪞 나를 돌아보기', shop:'🛒 장보기', report:'📊 월간 리포트', diary:'📝 메모·일기', mission:'🎯 미션', share:'👥 공유', hub:'🔖 추천', tips:'💡 생활 팁', settings:'⚙️ 설정'};
+  const PAGE_TITLES = {home:'🏠 홈', food:'🥕 식재료', life:'🌀 생활 관리', shop:'🛒 장보기', report:'📊 월간 리포트', diary:'📝 메모·일기', mission:'🎯 미션', share:'👥 공유', hub:'🔖 추천', tips:'💡 생활 팁', settings:'⚙️ 설정'};
 
   // ── 로딩 ──
   if(authState === 'loading') return (
@@ -4123,7 +3869,7 @@ function App() {
     {id:'home',    emoji:'🏠', label:'홈'},
     {id:'food',    emoji:'🥕', label:'식재료'},
     {id:'life',    emoji:'🌀', label:'생활'},
-    {id:'reflect', emoji:'🪞', label:'돌아보기'},
+    {id:'hub',     emoji:'🔖', label:'추천'},
     {id:'settings',emoji:'⚙️', label:'설정'},
   ];
   const isDark = darkMode;
@@ -4147,7 +3893,6 @@ function App() {
           {page==='home'&&<HomePage foods={foods} lifeItems={lifeItems} streak={streak} weeklyLog={weeklyLog} onNav={setPage} userName={userName} onQuickAdd={addFood} onQuickCheck={toggleLife}/>}
           {page==='food'&&<FoodPage foods={foods} onAdd={addFood} onDelete={deleteFood} onEdit={editFood} fb={fb} user={user}/>}
           {page==='life'&&<LifePage lifeItems={lifeItems} onAdd={addLife} onToggle={toggleLife} onDelete={deleteLife} onEdit={editLife} streak={streak} weeklyLog={weeklyLog} updateStreak={updateStreak} fb={fb} user={user}/>}
-          {page==='reflect'&&<ReflectPage fb={fb} user={user} lifeItems={lifeItems} weeklyLog={weeklyLog} streak={streak}/>}
           {page==='report'&&<ReportPage weeklyLog={weeklyLog} lifeItems={lifeItems} foods={foods} streak={streak}/>}
           {page==='diary'&&<DiaryPage fb={fb} user={user}/>}
           {page==='mission'&&<MissionPage streak={streak} lifeItems={lifeItems} weeklyLog={weeklyLog} animal={animal} foods={foods} fb={fb} user={user}/>}
