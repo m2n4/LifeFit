@@ -72,8 +72,8 @@
 <!-- Firebase SDK -->
 <script type="module" id="firebase-init">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBk7oAh970wN06ZokSBQ42OIXyT_Q91ULY",
@@ -94,10 +94,9 @@
   window._firebase = {
     auth, db, googleProvider,
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
-    signOut, signInWithPopup, updateProfile, onAuthStateChanged,
-    GoogleAuthProvider, deleteUser, reauthenticateWithCredential, EmailAuthProvider,
-    doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp,
-    query, where, getDocs, writeBatch
+    signOut, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, onAuthStateChanged,
+    GoogleAuthProvider,
+    doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp
   };
   window._firebaseReady = true;
   window.dispatchEvent(new Event('firebaseReady'));
@@ -541,154 +540,11 @@ function RepeatPicker({form,setForm}) {
 // ============================================================
 // SIDEBAR
 // ============================================================
-// ============================================================
-// 페이지 사용법 가이드
-// ============================================================
-
-const PAGE_GUIDES = {
-  home: {
-    title: '🏠 홈 화면',
-    steps: [
-      { emoji: '🔔', title: '우선순위 알림', desc: '유통기한 임박 식재료나 밀린 생활 관리 항목이 자동으로 표시돼요. 카드를 누르면 해당 페이지로 이동해요.' },
-      { emoji: '📊', title: '생활 달성 현황', desc: '오늘 해야 할 항목 중 몇 개를 완료했는지 원형 게이지로 확인해요. 🌱 1개↑ / 💪 50%↑ / 🔥 100% 달성 단계로 나뉘어요.' },
-      { emoji: '✨', title: '맞춤 추천', desc: '내 상태에 따라 실시간으로 바뀌는 추천이에요. 냉장고가 비면 장보기, 빨래가 밀리면 세탁 알림이 나타나요.' },
-      { emoji: '🔥', title: '연속 스트릭', desc: '하루 1개 이상 완료하면 스트릭이 쌓여요. 사이드바 캐릭터 옆에서도 확인할 수 있어요.' },
-    ],
-  },
-  food: {
-    title: '🥕 식재료',
-    steps: [
-      { emoji: '➕', title: '식재료 추가', desc: '+ 추가 버튼으로 직접 입력하거나, 아래 빠른 추가 버튼으로 자주 쓰는 재료를 바로 넣어요. 구매일 기준 유통기한이 자동 계산돼요.' },
-      { emoji: '🧊', title: '냉장고 현황', desc: '색상으로 상태를 한눈에 파악해요. 🟢 여유 → 🟡 주의 → 🟠 임박 → 🔴 위험/초과 순이에요.' },
-      { emoji: '🛒', title: '장보기 목록', desc: '장보기 목록 탭에서 필요한 것들을 카테고리별로 정리해요. 임박 식재료는 자동으로 제안돼요.' },
-      { emoji: '✕', title: '식재료 삭제', desc: '카드 오른쪽 ✕ 버튼으로 삭제해요. 먹었거나 버렸을 때 삭제하면 목록이 깔끔하게 유지돼요.' },
-    ],
-  },
-  life: {
-    title: '🌀 생활 관리',
-    steps: [
-      { emoji: '✅', title: '오늘 할 일', desc: '오늘 해야 하는 루틴·생활·청소 항목이 표시돼요. 체크하면 아래로 내려가고, 다음날 자동으로 초기화돼요.' },
-      { emoji: '📅', title: '날짜 이동', desc: '< > 버튼으로 날짜를 바꿔서 과거 기록을 확인하거나 미래 루틴을 미리 볼 수 있어요.' },
-      { emoji: '📋', title: '예정된 관리', desc: '아직 주기가 안 된 항목이에요. D-day로 언제 해야 하는지 표시되고, 진행 바로 주기 얼마나 지났는지 한눈에 봐요.' },
-      { emoji: '⇅', title: '순서 편집', desc: '미완료 항목이 2개 이상이면 ⇅ 순서 버튼이 나타나요. 누르면 ↑↓ 버튼으로 순서를 바꿀 수 있어요.' },
-      { emoji: '📊', title: '월간 리포트', desc: '📊 버튼을 누르면 이번 달 달성률, 히트맵, 최장 연속 기록을 확인해요.' },
-      { emoji: '📔', title: '하루 기록', desc: '📔 버튼을 누르면 오늘 일기를 써요. 기분 이모지와 자유 텍스트로 하루를 기록해요.' },
-    ],
-  },
-  mission: {
-    title: '🎯 미션 & 성장',
-    steps: [
-      { emoji: '🥚', title: '캐릭터 성장', desc: '스트릭이 쌓이면 캐릭터가 성장해요. 🥚 시작 → 🌱 새싹 → ⭐ 노력가 → 💎 고수 → 👑 전설 5단계예요.' },
-      { emoji: '📋', title: '주간 미션', desc: '매주 월요일에 6가지 미션이 초기화돼요. 완료하면 XP를 획득하고 주간 XP 바가 채워져요.' },
-      { emoji: '⚡', title: 'XP 시스템', desc: '이번 주 3일 달성(30XP), 5일 달성(60XP), 완벽한 하루(40XP), 청소 완료(25XP), 식재료 관리(35XP), 하루기록(20XP)' },
-    ],
-  },
-  shop: {
-    title: '🛒 장보기 목록',
-    steps: [
-      { emoji: '➕', title: '항목 추가', desc: '입력창에 적고 Enter 또는 추가 버튼을 눌러요. 카테고리를 선택하면 분류가 쉬워요.' },
-      { emoji: '✓', title: '구매 체크', desc: '항목을 누르면 완료 표시가 돼요. 다시 누르면 취소돼요.' },
-      { emoji: '🔔', title: '자동 제안', desc: '유통기한이 D-2 이내인 식재료가 자동으로 제안돼요. + 버튼으로 바로 목록에 추가해요.' },
-      { emoji: '🗑️', title: '완료 정리', desc: '오른쪽 상단 완료 항목 삭제로 체크된 것들을 한 번에 지울 수 있어요.' },
-    ],
-  },
-  share: {
-    title: '👥 공유',
-    steps: [
-      { emoji: '🔑', title: '내 코드 생성', desc: '공유 코드 생성 버튼을 눌러 6자리 코드를 만들어요. 이 코드를 룸메이트에게 알려주세요.' },
-      { emoji: '📥', title: '연결하기', desc: '룸메이트의 코드를 입력하고 연결 버튼을 누르면 양방향으로 즉시 연결돼요.' },
-      { emoji: '📊', title: '현황 비교', desc: '연결되면 나와 룸메이트의 오늘 달성률, 스트릭을 나란히 볼 수 있어요.' },
-    ],
-  },
-  settings: {
-    title: '⚙️ 설정',
-    steps: [
-      { emoji: '🐾', title: '캐릭터 & 테마', desc: '캐릭터 이모지와 앱 색상을 선택하면 즉시 반영돼요. 저장 버튼 없이 바로 저장돼요.' },
-      { emoji: '🎨', title: '섹션 색상', desc: '루틴·생활·청소 섹션마다 다른 색을 지정할 수 있어요.' },
-      { emoji: '🌙', title: '다크모드', desc: '토글을 켜면 어두운 화면으로 전환돼요. 눈이 편안한 네이비 계열 배경이에요.' },
-      { emoji: '🗑️', title: '계정 삭제', desc: '계정과 모든 데이터를 영구 삭제해요. 삭제 전 경고를 꼭 읽어주세요.' },
-    ],
-  },
-};
-
-// 가이드 모달 컴포넌트
-function GuideModal({pageId, onClose}) {
-  const theme = useTheme();
-  const guide = PAGE_GUIDES[pageId];
-  const [activeStep, setActiveStep] = React.useState(0);
-  if(!guide) return null;
-  const step = guide.steps[activeStep];
-  const isLast = activeStep === guide.steps.length - 1;
-
-  return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:2000,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:C.card,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:480,padding:'28px 24px 36px',animation:'slideUp 0.25s ease'}}>
-        {/* 헤더 */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-          <div style={{fontSize:16,fontWeight:800,color:C.text}}>{guide.title} 사용법</div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:C.muted,padding:0,width:'auto',margin:0}}>✕</button>
-        </div>
-
-        {/* 스텝 카드 */}
-        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:20,padding:'24px 22px',marginBottom:20,border:`1.5px solid ${theme.mid}`,minHeight:140}}>
-          <div style={{fontSize:36,marginBottom:10,lineHeight:1}}>{step.emoji}</div>
-          <div style={{fontSize:16,fontWeight:800,color:theme.primary,marginBottom:6}}>{step.title}</div>
-          <div style={{fontSize:14,color:C.text2,lineHeight:1.7}}>{step.desc}</div>
-        </div>
-
-        {/* 스텝 인디케이터 */}
-        <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:20}}>
-          {guide.steps.map((_,i)=>(
-            <button key={i} onClick={()=>setActiveStep(i)} style={{
-              width:i===activeStep?24:8,height:8,borderRadius:8,border:'none',cursor:'pointer',margin:0,padding:0,
-              background:i===activeStep?theme.primary:theme.mid,
-              transition:'all 0.25s',
-            }}/>
-          ))}
-        </div>
-
-        {/* 버튼 */}
-        <div style={{display:'flex',gap:8}}>
-          {activeStep > 0 && (
-            <button onClick={()=>setActiveStep(p=>p-1)} style={{
-              flex:1,padding:'13px',borderRadius:14,border:`1.5px solid ${C.border2}`,
-              background:C.card,color:C.text3,fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
-            }}>← 이전</button>
-          )}
-          <button onClick={()=>{ if(isLast) onClose(); else setActiveStep(p=>p+1); }} style={{
-            flex:2,padding:'13px',borderRadius:14,border:'none',
-            background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
-            boxShadow:`0 3px 12px ${theme.primary}44`,
-          }}>{isLast ? '닫기 ✓' : '다음 →'}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 사용법 버튼 — 각 페이지 헤더에 붙이는 작은 ? 버튼
-function GuideBtn({pageId, style={}}) {
-  const theme = useTheme();
-  const [open, setOpen] = React.useState(false);
-  if(!PAGE_GUIDES[pageId]) return null;
-  return (
-    <>
-      <button onClick={()=>setOpen(true)} title="사용법 보기" style={{
-        width:28,height:28,borderRadius:'50%',border:`1.5px solid ${theme.mid}`,
-        background:theme.light,color:theme.primary,fontSize:13,fontWeight:800,
-        cursor:'pointer',margin:0,display:'flex',alignItems:'center',justifyContent:'center',
-        flexShrink:0,...style,
-      }}>?</button>
-      {open && <GuideModal pageId={pageId} onClose={()=>setOpen(false)}/>}
-    </>
-  );
-}
-
-
 const NAV=[
   {id:'home',    emoji:'🏠',label:'홈'},
   {id:'food',    emoji:'🥕',label:'식재료'},
   {id:'life',    emoji:'🌀',label:'생활 관리'},
+  {id:'reflect', emoji:'🪞',label:'나를 돌아보기'},
   {id:'hub',     emoji:'🔖',label:'추천'},
   {id:'tips',    emoji:'💡',label:'생활 팁'},
   {id:'share',   emoji:'👥',label:'공유'},
@@ -1096,6 +952,27 @@ function HomePage({foods,lifeItems,streak,weeklyLog,onNav,userName,onQuickAdd,on
         </div>
       </div>
 
+      {/* ⑥-2 나를 돌아보기 */}
+      <div style={{marginBottom:18}}>
+        <button onClick={()=>onNav('reflect')} style={{
+          width:'100%',padding:'16px 20px',borderRadius:20,border:`2px solid ${theme.mid}`,
+          background:`linear-gradient(135deg,${theme.bg},${theme.light})`,
+          display:'flex',alignItems:'center',gap:14,cursor:'pointer',
+          boxShadow:`0 3px 12px ${theme.primary}18`,transition:'all 0.18s',
+          margin:0,
+        }}
+        onMouseEnter={e=>{e.currentTarget.style.borderColor=theme.primary;e.currentTarget.style.boxShadow=`0 5px 18px ${theme.primary}33`;}}
+        onMouseLeave={e=>{e.currentTarget.style.borderColor=theme.mid;e.currentTarget.style.boxShadow=`0 3px 12px ${theme.primary}18`;}}
+        >
+          <div style={{width:46,height:46,borderRadius:14,background:theme.primary,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>🪞</div>
+          <div style={{flex:1,textAlign:'left'}}>
+            <div style={{fontSize:15,fontWeight:800,color:theme.primary}}>나를 돌아보기</div>
+            <div style={{fontSize:12,color:C.muted,marginTop:2}}>오늘 하루를 기록하고 감정을 돌아봐요</div>
+          </div>
+          <span style={{fontSize:18,color:theme.border,opacity:0.7}}>›</span>
+        </button>
+      </div>
+
       {/* ⑦ 이번 주 */}
       <div style={{background:C.card,borderRadius:18,padding:'16px 18px',border:`1.5px solid ${C.border}`}}>
         <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>이번 주 달성 현황</div>
@@ -1204,10 +1081,7 @@ function FoodPage({foods,onAdd,onDelete,onEdit,fb,user}) {
           <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🥕 식재료</div>
           <div style={{fontSize:13,color:C.muted}}>{foodTab==='fridge'?'유통기한을 한눈에 확인하세요':'필요한 것들을 미리 정리해요'}</div>
         </div>
-        <div style={{display:'flex',gap:6,alignItems:'center'}}>
-          <GuideBtn pageId='food'/>
-          {foodTab==='fridge'&&<Btn onClick={()=>{setAddForm({name:'',emoji:'',storage:'냉장',expiryDate:'',purchaseDate:getToday()});setShowAdd(true);}}>+ 추가</Btn>}
-        </div>
+        {foodTab==='fridge'&&<Btn onClick={()=>{setAddForm({name:'',emoji:'',storage:'냉장',expiryDate:'',purchaseDate:getToday()});setShowAdd(true);}}>+ 추가</Btn>}
       </div>
 
       {/* ── 탭 ── */}
@@ -1744,24 +1618,22 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
           <div style={{fontSize:12,color:C.muted}}>
             {lifeTab==='today'&&'루틴·생활·청소 한눈에'}
             {lifeTab==='report'&&'월간 달성 기록'}
-            {lifeTab==='diary'&&'오늘을 기억해요 ✍️'}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:6}}>
-          {/* 리포트 / 하루기록 아이콘 버튼 */}
-          {[{id:'report',emoji:'📊',tip:'월간 리포트'},{id:'diary',emoji:'📔',tip:'하루 기록'}].map(t=>(
-            <button key={t.id} onClick={()=>setLifeTab(lifeTab===t.id?'today':t.id)} title={t.tip} style={{
-              width:36,height:36,borderRadius:10,border:`1.5px solid ${lifeTab===t.id?theme.primary:theme.mid}`,
-              background:lifeTab===t.id?theme.primary:theme.bg,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              fontSize:16,cursor:'pointer',width:'auto',padding:'0 10px',height:34,margin:0,
-              transition:'all 0.15s',
-              boxShadow:lifeTab===t.id?`0 2px 8px ${theme.primary}44`:'none',
-            }}>{t.emoji}</button>
-          ))}
-          <div style={{width:1,height:20,background:theme.mid,margin:'0 2px'}}/>
-          <GuideBtn pageId='life'/>
-          <Btn variant="outline" size="sm" onClick={()=>setShowPackModal(true)}>✨</Btn>
+          <Btn variant="outline" size="sm" onClick={()=>setShowPackModal(true)} style={{display:'flex',alignItems:'center',gap:4}}>
+            <span>✨</span><span>추천 관리</span>
+          </Btn>
+          <button onClick={()=>setLifeTab(lifeTab==='report'?'today':'report')} style={{
+            display:'flex',alignItems:'center',gap:4,
+            padding:'6px 12px',borderRadius:11,border:`1.5px solid ${lifeTab==='report'?theme.primary:theme.mid}`,
+            background:lifeTab==='report'?theme.primary:theme.bg,
+            color:lifeTab==='report'?'#fff':theme.primary,
+            fontSize:12,fontWeight:700,cursor:'pointer',width:'auto',margin:0,
+            transition:'all 0.15s',
+          }}>
+            <span>📊</span><span>월간 리포트</span>
+          </button>
           <Btn size="sm" onClick={()=>openAdd('루틴')}>+ 추가</Btn>
         </div>
       </div>
@@ -1769,11 +1641,6 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
       {/* ── 리포트 탭 ── */}
       {lifeTab==='report'&&(
         <ReportPage weeklyLog={weeklyLog} lifeItems={lifeItems} foods={[]} streak={streak}/>
-      )}
-
-      {/* ── 하루기록 탭 ── */}
-      {lifeTab==='diary'&&(
-        <DiaryPage fb={fb} user={user}/>
       )}
 
       {/* ── 오늘 할 일 탭 ── */}
@@ -1900,34 +1767,50 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
             {isFuture?'미래 날짜는 루틴 구성 미리보기예요':'이 날은 할 일이 없어요'}
           </div>
         ) : (
-          <div style={{display:'flex',flexDirection:'column',gap:7}}>
-            {/* 미완료 */}
-            {todayUndone.map((c,idx)=>(
-              <LifeItemCard key={c.id} c={c} onToggle={onToggle} onDelete={onDelete} openEdit={openEdit} updateStreak={updateStreak} lifeItems={lifeItems} viewDate={viewDate} isReadOnly={isPast||isFuture}
-                showMoveButtons={sortMode&&isToday}
-                onMoveUp={idx>0?()=>handleMoveUp(c.id):null}
-                onMoveDown={idx<todayUndone.length-1?()=>handleMoveDown(c.id):null}
-              />
-            ))}
-            {/* 완료 구분선 */}
-            {todayDone.length>0&&todayUndone.length>0&&(
-              <div style={{display:'flex',alignItems:'center',gap:8,margin:'4px 0'}}>
-                <div style={{flex:1,height:1,background:C.border2}}/>
-                <span style={{fontSize:11,color:C.muted,fontWeight:600}}>완료된 항목</span>
-                <div style={{flex:1,height:1,background:C.border2}}/>
-              </div>
-            )}
-            {todayDone.length>0&&todayUndone.length===0&&(
-              <div style={{display:'flex',alignItems:'center',gap:8,margin:'4px 0'}}>
-                <div style={{flex:1,height:1,background:'#bbf7d0'}}/>
-                <span style={{fontSize:11,color:'#16a34a',fontWeight:700}}>✓ 모두 완료!</span>
-                <div style={{flex:1,height:1,background:'#bbf7d0'}}/>
-              </div>
-            )}
-            {/* 완료된 항목들 */}
-            {todayDone.map(c=>(
-              <LifeItemCard key={c.id} c={c} onToggle={onToggle} onDelete={onDelete} openEdit={openEdit} updateStreak={updateStreak} lifeItems={lifeItems} viewDate={viewDate} isReadOnly={isPast||isFuture}/>
-            ))}
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            {/* 섹션별 그룹화 */}
+            {(() => {
+              const SECTIONS_ORDER = ['루틴','생활','청소'];
+              const groups = SECTIONS_ORDER.map(sec => ({
+                sec,
+                undone: todayUndone.filter(c=>c.section===sec),
+                done: todayDone.filter(c=>c.section===sec),
+              })).filter(g=>g.undone.length>0||g.done.length>0);
+              const SECTIONS = LIFE_SECTIONS_BASE;
+              return groups.map(({sec,undone,done})=>{
+                const secDef = SECTIONS[sec]||{icon:'📌',color:'#6b7280',bg:'#f9fafb',border:'#e5e7eb'};
+                const allDoneInSec = undone.length===0&&done.length>0;
+                return (
+                  <div key={sec}>
+                    {/* 섹션 헤더 */}
+                    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:7}}>
+                      <span style={{fontSize:14}}>{secDef.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:secDef.color}}>{secDef.label||sec}</span>
+                      <span style={{fontSize:10,color:'#fff',background:allDoneInSec?'#22c55e':secDef.color,padding:'1px 7px',borderRadius:20,fontWeight:700}}>
+                        {allDoneInSec?`${done.length}/${done.length} ✓`:`${done.length}/${undone.length+done.length}`}
+                      </span>
+                      <div style={{flex:1,height:1,background:secDef.border}}/>
+                      {!(isPast||isFuture)&&isToday&&<button onClick={()=>openAdd(sec)} style={{fontSize:10,color:secDef.color,background:secDef.bg,border:`1px solid ${secDef.border}`,borderRadius:20,padding:'2px 8px',cursor:'pointer',width:'auto',margin:0,fontWeight:600}}>+ 추가</button>}
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:7}}>
+                      {undone.map((c,idx)=>{
+                        const globalIdx = todayUndone.indexOf(c);
+                        return (
+                          <LifeItemCard key={c.id} c={c} onToggle={onToggle} onDelete={onDelete} openEdit={openEdit} updateStreak={updateStreak} lifeItems={lifeItems} viewDate={viewDate} isReadOnly={isPast||isFuture}
+                            showMoveButtons={sortMode&&isToday}
+                            onMoveUp={globalIdx>0?()=>handleMoveUp(c.id):null}
+                            onMoveDown={globalIdx<todayUndone.length-1?()=>handleMoveDown(c.id):null}
+                          />
+                        );
+                      })}
+                      {done.map(c=>(
+                        <LifeItemCard key={c.id} c={c} onToggle={onToggle} onDelete={onDelete} openEdit={openEdit} updateStreak={updateStreak} lifeItems={lifeItems} viewDate={viewDate} isReadOnly={isPast||isFuture}/>
+                      ))}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
@@ -2140,12 +2023,25 @@ function TipsPage() {
 // ============================================================
 const SHOP_CATEGORIES = ['과일/채소','정육/수산','유제품','가공식품','양념/소스','생활용품','기타'];
 
+// 레시피 기반 장보기 프리셋
+const RECIPE_PRESETS = [
+  {name:'계란볶음밥',emoji:'🍳',ingredients:['계란','대파','당근','밥','참기름']},
+  {name:'된장찌개',emoji:'🍲',ingredients:['두부','대파','감자','된장','애호박']},
+  {name:'삼겹살 구이',emoji:'🥩',ingredients:['삼겹살','쌈채소','마늘','쌈장']},
+  {name:'파스타',emoji:'🍝',ingredients:['파스타면','마늘','올리브오일','토마토','베이컨']},
+  {name:'비빔밥',emoji:'🥗',ingredients:['시금치','당근','버섯','계란','고추장','참기름']},
+  {name:'순두부찌개',emoji:'🍜',ingredients:['순두부','대파','계란','고추장','참기름']},
+  {name:'제육볶음',emoji:'🥘',ingredients:['돼지고기','양파','대파','고추장','마늘']},
+  {name:'감자볶음',emoji:'🥔',ingredients:['감자','대파','양파','마늘','참기름']},
+];
+
 function ShoppingPage({foods, fb, user}) {
   const theme = useTheme();
   const [items, setItems] = React.useState([]);
   const [input, setInput] = React.useState('');
   const [category, setCategory] = React.useState('기타');
-  const [filterDone, setFilterDone] = React.useState(false);
+  const [shopTab, setShopTab] = React.useState('list'); // 'list' | 'repurchase' | 'recipe'
+  const [recipeOpen, setRecipeOpen] = React.useState(null);
 
   // Firestore 실시간
   React.useEffect(() => {
@@ -2156,12 +2052,13 @@ function ShoppingPage({foods, fb, user}) {
     return () => unsub();
   }, [fb, user]);
 
-  async function addItem() {
-    if(!input.trim()||!fb||!user) return;
+  async function addItem(text, cat, emoji) {
+    if((!text&&!input.trim())||!fb||!user) return;
+    const t = text || input.trim();
     await fb.addDoc(fb.collection(fb.db,'users',user.uid,'shoppingItems'), {
-      text: input.trim(), category, done: false, createdAt: new Date().toISOString()
+      text: t, category: cat||category, done: false, createdAt: new Date().toISOString(), emoji: emoji||''
     });
-    setInput('');
+    if(!text) setInput('');
   }
   async function toggleItem(id, done) {
     if(!fb||!user) return;
@@ -2176,9 +2073,26 @@ function ShoppingPage({foods, fb, user}) {
     const done = items.filter(i=>i.done);
     await Promise.all(done.map(i => fb.deleteDoc(fb.doc(fb.db,'users',user.uid,'shoppingItems',i.id))));
   }
+  async function addRecipeIngredients(recipe) {
+    if(!fb||!user) return;
+    for(const ing of recipe.ingredients) {
+      if(!items.some(i=>i.text.includes(ing))) {
+        await fb.addDoc(fb.collection(fb.db,'users',user.uid,'shoppingItems'), {
+          text:ing, category:'과일/채소', done:false, createdAt:new Date().toISOString(), emoji:'', recipeTag:recipe.name
+        });
+      }
+    }
+    setRecipeOpen(null);
+  }
 
-  // 임박 식재료 → 자동 제안
-  const suggestions = foods
+  // 유통기한 임박 (D-5 이하) → 재구매 추천
+  const repurchaseSuggestions = foods
+    .map(f=>({...f, dl:calcDaysLeft(f.expiryDate)}))
+    .filter(f=>f.dl<=5&&f.dl>=0)
+    .sort((a,b)=>a.dl-b.dl);
+
+  // 임박(D-2) 자동 장보기 제안
+  const autoSuggestions = foods
     .map(f=>({...f, dl:calcDaysLeft(f.expiryDate)}))
     .filter(f=>f.dl<=2&&f.dl>=0)
     .filter(f=>!items.some(i=>i.text.includes(f.name)));
@@ -2187,99 +2101,195 @@ function ShoppingPage({foods, fb, user}) {
   const done = items.filter(i=>i.done);
   const byCategory = SHOP_CATEGORIES.map(cat=>({cat, items: undone.filter(i=>i.category===cat)})).filter(g=>g.items.length>0);
 
+  const tabStyle = (id) => ({
+    flex:1,padding:'9px 4px',borderRadius:12,border:`2px solid ${shopTab===id?theme.primary:theme.mid}`,
+    background:shopTab===id?theme.primary:theme.bg,cursor:'pointer',width:'auto',margin:0,
+    fontSize:11,fontWeight:700,color:shopTab===id?'#fff':theme.primary,
+    display:'flex',alignItems:'center',justifyContent:'center',gap:4,transition:'all 0.15s',
+  });
+
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
-        <div>
-          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🛒 장보기 목록</div>
+      {/* 탭 */}
+      <div style={{display:'flex',gap:6,marginBottom:16}}>
+        <button style={tabStyle('list')} onClick={()=>setShopTab('list')}>🛒 장보기 목록</button>
+        <button style={tabStyle('repurchase')} onClick={()=>setShopTab('repurchase')}>
+          🔄 재구매 추천
+          {repurchaseSuggestions.length>0&&<span style={{background:'#ef4444',color:'#fff',borderRadius:20,padding:'0 5px',fontSize:10}}>{repurchaseSuggestions.length}</span>}
+        </button>
+        <button style={tabStyle('recipe')} onClick={()=>setShopTab('recipe')}>🍽️ 레시피</button>
+      </div>
+
+      {/* ── 장보기 목록 탭 ── */}
+      {shopTab==='list'&&(<div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <div style={{fontSize:13,color:C.muted}}>필요한 것들을 미리 정리해요</div>
-        </div>
-        <div style={{display:'flex',gap:7,alignItems:'center'}}>
-          <GuideBtn pageId='shop'/>
           {done.length>0&&<button onClick={clearDone} style={{fontSize:12,color:C.muted,background:'none',border:'none',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>완료 항목 삭제</button>}
         </div>
-      </div>
 
-      {/* 임박 식재료 자동 제안 */}
-      {suggestions.length>0&&(
-        <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:16,padding:'14px 16px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
-          <div style={{fontSize:12,fontWeight:700,color:'#ea580c',marginBottom:8}}>🔔 곧 떨어질 것들이에요</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-            {suggestions.map(f=>(
-              <button key={f.id} onClick={async()=>{
-                if(!fb||!user) return;
-                await fb.addDoc(fb.collection(fb.db,'users',user.uid,'shoppingItems'), {
-                  text:f.name, category:'기타', done:false, createdAt:new Date().toISOString(), emoji:f.emoji
-                });
-              }} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 11px',borderRadius:20,border:'1.5px solid #fed7aa',background:C.card,cursor:'pointer',fontSize:12,fontWeight:600,color:'#ea580c',width:'auto',margin:0}}>
-                {f.emoji} {f.name} <span style={{fontSize:10,opacity:0.7}}>D-{f.dl}</span> +
-              </button>
+        {/* 임박 식재료 자동 제안 */}
+        {autoSuggestions.length>0&&(
+          <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:16,padding:'14px 16px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#ea580c',marginBottom:8}}>🔔 곧 소진될 것들 — 장바구니에 추가할까요?</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {autoSuggestions.map(f=>(
+                <button key={f.id} onClick={()=>addItem(f.name,'기타',f.emoji)} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 11px',borderRadius:20,border:'1.5px solid #fed7aa',background:C.card,cursor:'pointer',fontSize:12,fontWeight:600,color:'#ea580c',width:'auto',margin:0}}>
+                  {f.emoji} {f.name} <span style={{fontSize:10,opacity:0.7}}>D-{f.dl}</span> +
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 입력 */}
+        <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
+          <div style={{display:'flex',gap:7,marginBottom:8}}>
+            <input value={input} onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&addItem()}
+              placeholder="항목 입력 후 Enter"
+              style={{flex:1,padding:'10px 13px',border:`1.5px solid ${theme.mid}`,borderRadius:11,fontSize:14,outline:'none',background:C.input}}
+              onFocus={e=>e.target.style.borderColor=theme.primary}
+              onBlur={e=>e.target.style.borderColor=theme.mid}
+            />
+            <button onClick={()=>addItem()} style={{padding:'10px 16px',borderRadius:11,border:'none',background:theme.primary,color:C.card,fontSize:14,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>
+          </div>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {SHOP_CATEGORIES.map(c=>(
+              <button key={c} onClick={()=>setCategory(c)} style={{padding:'4px 10px',borderRadius:20,border:`1.5px solid ${category===c?theme.primary:'#e5e7eb'}`,background:category===c?theme.light:C.card,color:category===c?theme.primary:'#6b7280',fontSize:11,fontWeight:category===c?700:400,cursor:'pointer',width:'auto',margin:0}}>{c}</button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* 입력 */}
-      <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
-        <div style={{display:'flex',gap:7,marginBottom:8}}>
-          <input value={input} onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&addItem()}
-            placeholder="항목 입력 후 Enter"
-            style={{flex:1,padding:'10px 13px',border:`1.5px solid ${theme.mid}`,borderRadius:11,fontSize:14,outline:'none',background:C.input}}
-            onFocus={e=>e.target.style.borderColor=theme.primary}
-            onBlur={e=>e.target.style.borderColor=theme.mid}
-          />
-          <button onClick={addItem} style={{padding:'10px 16px',borderRadius:11,border:'none',background:theme.primary,color:C.card,fontSize:14,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>
-        </div>
-        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-          {SHOP_CATEGORIES.map(c=>(
-            <button key={c} onClick={()=>setCategory(c)} style={{padding:'4px 10px',borderRadius:20,border:`1.5px solid ${category===c?theme.primary:'#e5e7eb'}`,background:category===c?theme.light:C.card,color:category===c?theme.primary:'#6b7280',fontSize:11,fontWeight:category===c?700:400,cursor:'pointer',width:'auto',margin:0}}>{c}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* 미완료 — 카테고리별 */}
-      {undone.length===0&&done.length===0&&(
-        <div style={{background:C.card,borderRadius:16,padding:'32px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
-          <div style={{fontSize:36,marginBottom:8}}>🛒</div>
-          <div style={{fontSize:14,fontWeight:600}}>장보기 목록이 비어있어요</div>
-          <div style={{fontSize:12,marginTop:4}}>필요한 것들을 추가해봐요</div>
-        </div>
-      )}
-      {byCategory.map(({cat,items:catItems})=>(
-        <div key={cat} style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.text2,marginBottom:8}}>{cat} <span style={{color:C.muted,fontWeight:400}}>({catItems.length})</span></div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {catItems.map(item=>(
-              <div key={item.id} style={{display:'flex',alignItems:'center',gap:10}}>
-                <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:item.done?theme.primary:'transparent',border:`2px solid ${item.done?theme.primary:'#d1d5db'}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
-                  {item.done&&<span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>}
+        {/* 미완료 목록 */}
+        {undone.length===0&&done.length===0&&(
+          <div style={{background:C.card,borderRadius:16,padding:'32px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:36,marginBottom:8}}>🛒</div>
+            <div style={{fontSize:14,fontWeight:600}}>장보기 목록이 비어있어요</div>
+            <div style={{fontSize:12,marginTop:4}}>필요한 것들을 추가해봐요</div>
+          </div>
+        )}
+        {byCategory.map(({cat,items:catItems})=>(
+          <div key={cat} style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.text2,marginBottom:8}}>{cat} <span style={{color:C.muted,fontWeight:400}}>({catItems.length})</span></div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {catItems.map(item=>(
+                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:item.done?theme.primary:'transparent',border:`2px solid ${item.done?theme.primary:'#d1d5db'}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
+                    {item.done&&<span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>}
+                  </div>
+                  <span style={{flex:1,fontSize:14,color:item.done?C.muted:C.text,textDecoration:item.done?'line-through':'none'}}>{item.emoji||''} {item.text}</span>
+                  {item.recipeTag&&<span style={{fontSize:10,color:theme.primary,background:theme.light,padding:'1px 7px',borderRadius:20,border:`1px solid ${theme.mid}`}}>{item.recipeTag}</span>}
+                  <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#d1d5db'}>✕</button>
                 </div>
-                <span style={{flex:1,fontSize:14,color:item.done?C.muted:C.text,textDecoration:item.done?'line-through':'none'}}>{item.emoji||''} {item.text}</span>
-                <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}} onMouseEnter={e=>e.currentTarget.style.color='#ef4444'} onMouseLeave={e=>e.currentTarget.style.color='#d1d5db'}>✕</button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-
-      {/* 완료된 항목 */}
-      {done.length>0&&(
-        <div style={{background:C.card2,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${C.border}`}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:8}}>✓ 완료 ({done.length})</div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {done.map(item=>(
-              <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,opacity:0.6}}>
-                <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:theme.primary,border:`2px solid ${theme.primary}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>
+        ))}
+        {done.length>0&&(
+          <div style={{background:C.card2,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.muted,marginBottom:8}}>✓ 완료 ({done.length})</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {done.map(item=>(
+                <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,opacity:0.6}}>
+                  <div onClick={()=>toggleItem(item.id,item.done)} style={{width:20,height:20,borderRadius:5,flexShrink:0,cursor:'pointer',background:theme.primary,border:`2px solid ${theme.primary}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    <span style={{color:'#fff',fontSize:10,fontWeight:700}}>✓</span>
+                  </div>
+                  <span style={{flex:1,fontSize:14,color:C.muted,textDecoration:'line-through'}}>{item.text}</span>
+                  <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}}>✕</button>
                 </div>
-                <span style={{flex:1,fontSize:14,color:C.muted,textDecoration:'line-through'}}>{item.text}</span>
-                <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#d1d5db',fontSize:14,padding:0,width:'auto',margin:0}}>✕</button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+        )}
+      </div>)}
+
+      {/* ── 재구매 추천 탭 ── */}
+      {shopTab==='repurchase'&&(<div>
+        <div style={{background:'linear-gradient(135deg,#fff7ed,#ffedd5)',borderRadius:18,padding:'16px 18px',marginBottom:14,border:'1.5px solid #fed7aa'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#ea580c',marginBottom:4}}>🔄 유통기한 임박 → 재구매 추천</div>
+          <div style={{fontSize:12,color:'#9a3412'}}>유통기한이 가까운 식재료를 다시 구매해야 할 때 알려드려요</div>
         </div>
-      )}
+        {repurchaseSuggestions.length===0?(
+          <div style={{background:C.card,borderRadius:16,padding:'32px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:36,marginBottom:8}}>✅</div>
+            <div style={{fontSize:14,fontWeight:600}}>임박한 식재료가 없어요</div>
+            <div style={{fontSize:12,marginTop:4}}>냉장고가 안전해요!</div>
+          </div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {repurchaseSuggestions.map(f=>{
+              const isAdded = items.some(i=>i.text.includes(f.name));
+              const dlColor = f.dl<=1?'#ef4444':f.dl<=3?'#f97316':'#eab308';
+              const dlBg = f.dl<=1?'#fef2f2':f.dl<=3?'#fff7ed':'#fefce8';
+              return (
+                <div key={f.id} style={{background:C.card,borderRadius:16,padding:'14px 16px',border:`1.5px solid ${dlBg}`,display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{width:44,height:44,borderRadius:12,background:dlBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{f.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{f.name}</div>
+                    <div style={{display:'flex',gap:6,marginTop:3,alignItems:'center'}}>
+                      <span style={{fontSize:11,fontWeight:700,color:dlColor,background:dlBg,padding:'1px 7px',borderRadius:20}}>D-{f.dl}</span>
+                      <span style={{fontSize:11,color:C.muted}}>{f.storage} 보관</span>
+                    </div>
+                  </div>
+                  <button onClick={()=>!isAdded&&addItem(f.name,'기타',f.emoji)} style={{
+                    padding:'7px 14px',borderRadius:11,border:`1.5px solid ${isAdded?'#22c55e':theme.primary}`,
+                    background:isAdded?'#f0fdf4':theme.primary,color:isAdded?'#16a34a':'#fff',
+                    fontSize:12,fontWeight:700,cursor:isAdded?'default':'pointer',width:'auto',margin:0,
+                  }}>{isAdded?'✓ 추가됨':'+ 추가'}</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>)}
+
+      {/* ── 레시피 기반 탭 ── */}
+      {shopTab==='recipe'&&(<div>
+        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'16px 18px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
+          <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:4}}>🍽️ 레시피 기반 자동 장보기</div>
+          <div style={{fontSize:12,color:C.muted}}>요리를 선택하면 필요한 재료를 바로 추가해요</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
+          {RECIPE_PRESETS.map(recipe=>{
+            const missingCount = recipe.ingredients.filter(ing=>!foods.some(f=>f.name.includes(ing))||foods.some(f=>f.name.includes(ing)&&calcDaysLeft(f.expiryDate)<=0)).length;
+            const isOpen = recipeOpen===recipe.name;
+            return (
+              <div key={recipe.name} style={{background:C.card,borderRadius:16,border:`1.5px solid ${isOpen?theme.primary:C.border}`,overflow:'hidden',transition:'all 0.15s',cursor:'pointer'}} onClick={()=>setRecipeOpen(isOpen?null:recipe.name)}>
+                <div style={{padding:'14px 15px'}}>
+                  <div style={{fontSize:26,marginBottom:6}}>{recipe.emoji}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:4}}>{recipe.name}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{recipe.ingredients.length}가지 재료</div>
+                  {missingCount>0&&<div style={{marginTop:4,fontSize:10,fontWeight:700,color:'#ea580c',background:'#fff7ed',padding:'2px 7px',borderRadius:20,display:'inline-block'}}>부족 {missingCount}개</div>}
+                </div>
+                {isOpen&&(
+                  <div style={{borderTop:`1px solid ${C.border}`,padding:'12px 15px',background:theme.bg}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.text2,marginBottom:8}}>필요한 재료</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>
+                      {recipe.ingredients.map(ing=>{
+                        const have = foods.some(f=>f.name.includes(ing)&&calcDaysLeft(f.expiryDate)>0);
+                        const inCart = items.some(i=>i.text.includes(ing));
+                        return (
+                          <span key={ing} style={{fontSize:11,padding:'3px 9px',borderRadius:20,fontWeight:600,
+                            background:have?'#f0fdf4':inCart?theme.light:'#fef2f2',
+                            color:have?'#16a34a':inCart?theme.primary:'#ef4444',
+                            border:`1px solid ${have?'#bbf7d0':inCart?theme.mid:'#fecaca'}`
+                          }}>
+                            {have?'✓':inCart?'🛒':'✕'} {ing}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();addRecipeIngredients(recipe);}} style={{
+                      width:'100%',padding:'9px',borderRadius:11,border:'none',
+                      background:theme.primary,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',margin:0,
+                    }}>없는 재료 장바구니에 추가</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>)}
     </div>
   );
 }
@@ -2435,6 +2445,199 @@ function ReportPage({weeklyLog, lifeItems, foods, streak}) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// 나를 돌아보기 페이지
+// ============================================================
+const REFLECT_QUESTIONS = [
+  {id:'q1', emoji:'☀️', text:'오늘 가장 잘한 일은 무엇인가요?', placeholder:'작은 것이라도 좋아요'},
+  {id:'q2', emoji:'😔', text:'오늘 아쉬웠거나 힘들었던 점은?', placeholder:'솔직하게 털어놓아요'},
+  {id:'q3', emoji:'💪', text:'내일은 어떻게 더 잘해볼 수 있을까요?', placeholder:'작은 다짐이라도 OK'},
+  {id:'q4', emoji:'🌟', text:'오늘 감사했던 순간이 있나요?', placeholder:'사람, 음식, 날씨 무엇이든'},
+  {id:'q5', emoji:'🎯', text:'오늘 목표한 것을 달성했나요?', placeholder:'달성률이나 느낌을 써봐요'},
+];
+const MOODS_REFLECT = ['😊','😄','😐','😔','😴','🔥','💪','🥺','😤','🌟'];
+
+function ReflectPage({fb, user, lifeItems, weeklyLog, streak}) {
+  const theme = useTheme();
+  const [memos, setMemos] = React.useState([]);
+  const [selectedDate, setSelectedDate] = React.useState(getToday());
+  const [answers, setAnswers] = React.useState({});
+  const [mood, setMood] = React.useState('😊');
+  const [saving, setSaving] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState('write'); // 'write' | 'history'
+  const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(()=>{
+    if(!fb||!user) return;
+    const unsub = fb.onSnapshot(fb.collection(fb.db,'users',user.uid,'reflects'), snap=>{
+      setMemos(snap.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>b.date.localeCompare(a.date)));
+    });
+    return ()=>unsub();
+  },[fb,user]);
+
+  React.useEffect(()=>{
+    const existing = memos.find(m=>m.date===selectedDate);
+    setAnswers(existing?.answers||{});
+    setMood(existing?.mood||'😊');
+    setSaved(false);
+  },[selectedDate, memos]);
+
+  async function saveReflect() {
+    if(!fb||!user) return;
+    const hasContent = Object.values(answers).some(v=>v.trim());
+    if(!hasContent) return;
+    setSaving(true);
+    const existing = memos.find(m=>m.date===selectedDate);
+    if(existing) {
+      await fb.updateDoc(fb.doc(fb.db,'users',user.uid,'reflects',existing.id), {answers,mood,updatedAt:new Date().toISOString()});
+    } else {
+      await fb.addDoc(fb.collection(fb.db,'users',user.uid,'reflects'), {date:selectedDate,answers,mood,createdAt:new Date().toISOString()});
+    }
+    setSaving(false);
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  }
+
+  function dateLabel2(ds) {
+    const d=new Date(ds+'T00:00:00');
+    const days=['일','월','화','수','목','금','토'];
+    return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  }
+
+  const todayStr = getToday();
+  const todayDue = lifeItems.filter(c=>isDueOn(c,todayStr));
+  const todayDoneCount = todayDue.filter(c=>isDoneOn(c,todayStr)).length;
+  const lifePct = todayDue.length ? Math.round(todayDoneCount/todayDue.length*100) : 0;
+  const streakCount = (streak||{count:0}).count;
+
+  return (
+    <div style={{paddingBottom:40}}>
+      {/* 헤더 */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}}>
+        <div>
+          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🪞 나를 돌아보기</div>
+          <div style={{fontSize:13,color:C.muted}}>하루를 기록하고 나를 이해해요</div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>setViewMode('write')} style={{padding:'6px 12px',borderRadius:20,border:`1.5px solid ${viewMode==='write'?theme.primary:'#e5e7eb'}`,background:viewMode==='write'?theme.light:C.card,color:viewMode==='write'?theme.primary:'#9ca3af',fontSize:12,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>✏️ 기록</button>
+          <button onClick={()=>setViewMode('history')} style={{padding:'6px 12px',borderRadius:20,border:`1.5px solid ${viewMode==='history'?theme.primary:'#e5e7eb'}`,background:viewMode==='history'?theme.light:C.card,color:viewMode==='history'?theme.primary:'#9ca3af',fontSize:12,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>📖 기록 보기</button>
+        </div>
+      </div>
+
+      {viewMode==='write'&&(
+        <div>
+          {/* 오늘 요약 카드 */}
+          <div style={{background:`linear-gradient(135deg,${theme.primary},${theme.border})`,borderRadius:20,padding:'18px 20px',marginBottom:16,color:'#fff'}}>
+            <div style={{fontSize:12,opacity:0.8,marginBottom:6}}>{dateLabel2(todayStr)} 요약</div>
+            <div style={{display:'flex',gap:20,alignItems:'center'}}>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:22,fontWeight:800}}>{lifePct}%</div>
+                <div style={{fontSize:10,opacity:0.75}}>오늘 달성률</div>
+              </div>
+              <div style={{width:1,height:36,background:'rgba(255,255,255,0.3)'}}/>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:22,fontWeight:800}}>🔥{streakCount}</div>
+                <div style={{fontSize:10,opacity:0.75}}>연속 달성</div>
+              </div>
+              <div style={{width:1,height:36,background:'rgba(255,255,255,0.3)'}}/>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:22,fontWeight:800}}>{todayDoneCount}/{todayDue.length}</div>
+                <div style={{fontSize:10,opacity:0.75}}>완료 항목</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 날짜 선택 */}
+          <div style={{background:C.card,borderRadius:14,padding:'11px 15px',marginBottom:12,border:`1.5px solid ${C.border}`,display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:14}}>📅</span>
+            <input type="date" value={selectedDate} max={getToday()} onChange={e=>setSelectedDate(e.target.value)}
+              style={{border:'none',background:'transparent',fontSize:14,fontWeight:700,color:C.text,outline:'none',cursor:'pointer'}}/>
+            {memos.some(m=>m.date===selectedDate)&&<span style={{fontSize:11,color:theme.primary,background:theme.light,padding:'2px 8px',borderRadius:20,fontWeight:700}}>기록 있음</span>}
+          </div>
+
+          {/* 기분 선택 */}
+          <div style={{background:C.card,borderRadius:16,padding:'14px 16px',marginBottom:12,border:`1.5px solid ${C.border}`}}>
+            <div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:8}}>오늘 기분은? {mood}</div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {MOODS_REFLECT.map(m=>(
+                <button key={m} onClick={()=>setMood(m)} style={{
+                  width:38,height:38,borderRadius:10,fontSize:20,border:`2px solid ${mood===m?theme.primary:'#f3f4f6'}`,
+                  background:mood===m?theme.light:C.card,cursor:'pointer',margin:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'
+                }}>{m}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* 질문 카드들 */}
+          {REFLECT_QUESTIONS.map((q,i)=>(
+            <div key={q.id} style={{background:C.card,borderRadius:16,padding:'15px 16px',marginBottom:10,border:`1.5px solid ${C.border}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                <span style={{fontSize:18}}>{q.emoji}</span>
+                <span style={{fontSize:13,fontWeight:700,color:C.text}}>{q.text}</span>
+              </div>
+              <textarea
+                value={answers[q.id]||''}
+                onChange={e=>setAnswers(p=>({...p,[q.id]:e.target.value}))}
+                placeholder={q.placeholder}
+                rows={2}
+                style={{width:'100%',border:`1.5px solid ${C.border2}`,borderRadius:10,padding:'10px 12px',fontSize:13,lineHeight:1.6,resize:'vertical',outline:'none',background:C.input,color:C.text,boxSizing:'border-box'}}
+                onFocus={e=>e.target.style.borderColor=theme.primary}
+                onBlur={e=>e.target.style.borderColor=C.border2}
+              />
+            </div>
+          ))}
+
+          <button onClick={saveReflect} disabled={saving} style={{
+            width:'100%',padding:'15px',borderRadius:16,border:'none',
+            background:`linear-gradient(135deg,${theme.primary},${theme.border})`,
+            color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',margin:0,
+            boxShadow:`0 4px 14px ${theme.primary}44`,
+            opacity:saving?0.7:1,
+          }}>
+            {saved?'✅ 저장됐어요!':saving?'저장 중...':'기록 저장'}
+          </button>
+        </div>
+      )}
+
+      {viewMode==='history'&&(
+        <div>
+          {memos.length===0?(
+            <div style={{background:C.card,borderRadius:16,padding:'40px',textAlign:'center',color:C.muted,border:`1.5px solid ${C.border}`}}>
+              <div style={{fontSize:40,marginBottom:10}}>🪞</div>
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>아직 기록이 없어요</div>
+              <div style={{fontSize:12}}>오늘 하루를 돌아보고 첫 기록을 남겨보세요</div>
+            </div>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              {memos.map(m=>(
+                <div key={m.id} style={{background:C.card,borderRadius:18,padding:'16px 18px',border:`1.5px solid ${C.border}`}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                    <span style={{fontSize:24}}>{m.mood||'😊'}</span>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:C.text}}>{dateLabel2(m.date)}</div>
+                      <div style={{fontSize:11,color:C.muted}}>{m.date}</div>
+                    </div>
+                  </div>
+                  {m.answers&&Object.entries(m.answers).filter(([,v])=>v.trim()).map(([qid,ans])=>{
+                    const q = REFLECT_QUESTIONS.find(q=>q.id===qid);
+                    if(!q) return null;
+                    return (
+                      <div key={qid} style={{marginBottom:8,padding:'10px 12px',background:C.card2,borderRadius:10}}>
+                        <div style={{fontSize:11,fontWeight:700,color:theme.primary,marginBottom:3}}>{q.emoji} {q.text}</div>
+                        <div style={{fontSize:12,color:C.text2,lineHeight:1.6}}>{ans}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2672,12 +2875,9 @@ function MissionPage({streak, lifeItems, weeklyLog, animal, foods, fb, user}) {
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
-        <div>
-          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🎯 미션 & 성장</div>
-          <div style={{fontSize:13,color:C.muted}}>이번 주 미션을 완료하고 성장해요</div>
-        </div>
-        <GuideBtn pageId='mission'/>
+      <div style={{marginBottom:18}}>
+        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>🎯 미션 & 성장</div>
+        <div style={{fontSize:13,color:C.muted}}>이번 주 미션을 완료하고 성장해요</div>
       </div>
 
       {/* 캐릭터 성장 카드 */}
@@ -2788,31 +2988,22 @@ function SharePage({fb, user, lifeItems, foods}) {
   const theme = useTheme();
   const [shareCode, setShareCode] = React.useState('');
   const [inputCode, setInputCode] = React.useState('');
+  const [sharedWith, setSharedWith] = React.useState([]);
+  const [sharedFrom, setSharedFrom] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [msg, setMsg] = React.useState('');
-  const [msgType, setMsgType] = React.useState('info'); // 'info'|'error'|'success'
-  const [partnerData, setPartnerData] = React.useState(null); // 연결된 룸메이트 데이터
-  const [partnerUid, setPartnerUid] = React.useState('');
-  const [disconnecting, setDisconnecting] = React.useState(false);
 
-  // 내 공유 데이터 로드 + 파트너 실시간 구독
   React.useEffect(()=>{
     if(!fb||!user) return;
-    const unsub = fb.onSnapshot(fb.doc(fb.db,'users',user.uid), snap=>{
-      if(!snap.exists()) return;
-      const d = snap.data();
-      setShareCode(d.shareCode||'');
-      const pUid = d.partnerUid||'';
-      setPartnerUid(pUid);
-      if(!pUid) { setPartnerData(null); return; }
-      // 파트너 데이터 구독
-      const unsubPartner = fb.onSnapshot(fb.doc(fb.db,'users',pUid), pSnap=>{
-        if(!pSnap.exists()) { setPartnerData(null); return; }
-        setPartnerData({uid:pUid, ...pSnap.data()});
-      });
-      return unsubPartner;
+    // 내 공유 코드 가져오기
+    fb.getDoc(fb.doc(fb.db,'users',user.uid)).then(snap=>{
+      if(snap.exists()) {
+        const d = snap.data();
+        setShareCode(d.shareCode||'');
+        setSharedWith(d.sharedWith||[]);
+        setSharedFrom(d.sharedFrom||null);
+      }
     });
-    return ()=>unsub();
   },[fb,user]);
 
   async function generateCode() {
@@ -2823,164 +3014,79 @@ function SharePage({fb, user, lifeItems, foods}) {
   }
 
   async function connectShare() {
-    if(!fb||!user||inputCode.trim().length<6) return;
-    const code = inputCode.trim().toUpperCase();
-    if(code === shareCode) { showMsg('본인 코드는 입력할 수 없어요', 'error'); return; }
+    if(!fb||!user||!inputCode.trim()) return;
     setLoading(true); setMsg('');
     try {
-      // 코드로 상대방 유저 찾기
-      const q = fb.query(fb.collection(fb.db,'users'), fb.where('shareCode','==',code));
-      const snap = await fb.getDocs(q);
-      if(snap.empty) { showMsg('코드를 찾을 수 없어요. 다시 확인해주세요.','error'); setLoading(false); return; }
-      const partnerDoc = snap.docs[0];
-      const pUid = partnerDoc.id;
-      if(pUid === user.uid) { showMsg('본인 코드예요','error'); setLoading(false); return; }
-      // 양방향 연결
-      const batch = fb.writeBatch(fb.db);
-      batch.update(fb.doc(fb.db,'users',user.uid), {partnerUid: pUid});
-      batch.update(fb.doc(fb.db,'users',pUid), {partnerUid: user.uid});
-      await batch.commit();
-      showMsg('연결됐어요! 🎉','success');
-      setInputCode('');
-    } catch(e) {
-      showMsg('연결 중 오류가 발생했어요: '+e.message,'error');
-    }
+      // 코드로 사용자 찾기
+      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      // Simplified: just store the code and show pending
+      await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {sharedFrom:inputCode.trim().toUpperCase()});
+      setSharedFrom(inputCode.trim().toUpperCase());
+      setMsg('연결 요청을 보냈어요!');
+    } catch(e) { setMsg('오류가 발생했어요.'); }
     setLoading(false);
   }
 
-  async function disconnect() {
-    if(!fb||!user||!partnerUid) return;
-    setDisconnecting(true);
-    try {
-      const batch = fb.writeBatch(fb.db);
-      batch.update(fb.doc(fb.db,'users',user.uid), {partnerUid:''});
-      batch.update(fb.doc(fb.db,'users',partnerUid), {partnerUid:''});
-      await batch.commit();
-      setPartnerData(null); setPartnerUid('');
-      showMsg('연결이 해제됐어요','info');
-    } catch(e) { showMsg('오류: '+e.message,'error'); }
-    setDisconnecting(false);
-  }
-
-  function showMsg(text, type='info') {
-    setMsg(text); setMsgType(type);
-    setTimeout(()=>setMsg(''), 4000);
-  }
-
+  // 공유된 내 오늘 현황
   const todayStr = getToday();
   const todayDue = lifeItems.filter(c=>isDueOn(c,todayStr));
   const todayDoneCount = todayDue.filter(c=>isDoneOn(c,todayStr)).length;
-  const pct = todayDue.length ? Math.round(todayDoneCount/todayDue.length*100) : 0;
-
-  // 파트너 현황 계산
-  const pTodayDue = partnerData ? (partnerData.lifeItems||[]).filter(c=>isDueOn(c,todayStr)) : [];
-  const pTodayDone = pTodayDue.filter(c=>isDoneOn(c,todayStr)).length;
-  const pPct = pTodayDue.length ? Math.round(pTodayDone/pTodayDue.length*100) : 0;
-  const msgColors = {info:{bg:theme.light,color:theme.primary,border:theme.mid}, error:{bg:'#fef2f2',color:'#ef4444',border:'#fecaca'}, success:{bg:'#f0fdf4',color:'#16a34a',border:'#bbf7d0'}};
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
-        <div>
-          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>👥 공유</div>
-          <div style={{fontSize:13,color:C.muted}}>룸메이트와 생활 관리를 함께해요</div>
-        </div>
-        <GuideBtn pageId='share'/>
+      <div style={{marginBottom:18}}>
+        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>👥 공유</div>
+        <div style={{fontSize:13,color:C.muted}}>룸메이트와 생활 관리를 함께해요</div>
       </div>
 
-      {msg&&<div style={{padding:'11px 16px',borderRadius:12,border:`1.5px solid ${msgColors[msgType].border}`,background:msgColors[msgType].bg,color:msgColors[msgType].color,fontSize:13,fontWeight:600,marginBottom:14}}>{msg}</div>}
+      {/* 내 공유 코드 */}
+      <div style={{background:'linear-gradient(135deg,'+theme.bg+','+theme.light+')',borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:8}}>📤 내 공유 코드</div>
+        {shareCode ? (
+          <div>
+            <div style={{fontSize:32,fontWeight:900,color:theme.primary,letterSpacing:4,textAlign:'center',padding:'12px',background:C.card,borderRadius:12,border:`2px dashed ${theme.border}`,marginBottom:8}}>{shareCode}</div>
+            <div style={{fontSize:11,color:C.muted,textAlign:'center'}}>이 코드를 룸메이트에게 알려주세요</div>
+            <button onClick={()=>{navigator.clipboard?.writeText(shareCode);setMsg('복사됐어요!');setTimeout(()=>setMsg(''),2000);}} style={{width:'100%',marginTop:8,padding:'9px',borderRadius:10,border:`1.5px solid ${theme.mid}`,background:C.card,color:theme.primary,fontSize:12,fontWeight:700,cursor:'pointer',margin:0}}>코드 복사</button>
+          </div>
+        ):(
+          <button onClick={generateCode} style={{width:'100%',padding:'12px',borderRadius:12,border:'none',background:theme.primary,color:C.card,fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>공유 코드 생성</button>
+        )}
+      </div>
 
-      {/* 연결된 파트너 */}
-      {partnerData ? (
-        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-            <div style={{fontSize:14,fontWeight:700,color:theme.primary}}>✅ 연결됨</div>
-            <button onClick={disconnect} disabled={disconnecting} style={{fontSize:11,color:'#ef4444',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:20,padding:'4px 12px',cursor:'pointer',fontWeight:600,width:'auto',margin:0}}>{disconnecting?'해제 중...':'연결 해제'}</button>
+      {/* 코드로 연결 */}
+      <div style={{background:C.card,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📥 룸메이트 코드 입력</div>
+        <div style={{display:'flex',gap:7}}>
+          <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase())} maxLength={6}
+            placeholder="6자리 코드"
+            style={{flex:1,padding:'11px 14px',border:`1.5px solid ${C.border2}`,borderRadius:11,fontSize:16,outline:'none',letterSpacing:3,fontWeight:700,textTransform:'uppercase'}}
+            onFocus={e=>e.target.style.borderColor=theme.primary}
+            onBlur={e=>e.target.style.borderColor='#e5e7eb'}
+          />
+          <button onClick={connectShare} disabled={loading||inputCode.length<6} style={{padding:'11px 16px',borderRadius:11,border:'none',background:inputCode.length>=6?theme.primary:'#e5e7eb',color:inputCode.length>=6?'#fff':'#9ca3af',fontSize:14,fontWeight:700,cursor:inputCode.length>=6?'pointer':'default',width:'auto',margin:0}}>연결</button>
+        </div>
+        {sharedFrom&&<div style={{marginTop:8,fontSize:12,color:'#16a34a',fontWeight:600}}>✓ {sharedFrom} 코드와 연결 중</div>}
+        {msg&&<div style={{marginTop:8,fontSize:12,color:theme.primary,fontWeight:600}}>{msg}</div>}
+      </div>
+
+      {/* 내 현황 미리보기 */}
+      <div style={{background:C.card,borderRadius:18,padding:'20px',border:`1.5px solid ${C.border}`}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📊 공유될 내 현황</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
+            <span style={{fontSize:13,color:C.text3}}>오늘 달성</span>
+            <span style={{fontSize:13,fontWeight:700,color:theme.primary}}>{todayDoneCount}/{todayDue.length}개</span>
           </div>
-          {/* 파트너 현황 */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-            {/* 나 */}
-            <div style={{background:'rgba(255,255,255,0.7)',borderRadius:14,padding:'14px',textAlign:'center'}}>
-              <div style={{fontSize:22,marginBottom:4}}>{partnerData.animal||'🐻'}</div>
-              <div style={{fontSize:12,fontWeight:700,color:theme.primary,marginBottom:6}}>나</div>
-              <div style={{fontSize:20,fontWeight:800,color:theme.primary}}>{pct}%</div>
-              <div style={{fontSize:11,color:C.muted,marginTop:2}}>{todayDoneCount}/{todayDue.length} 완료</div>
-              <div style={{height:4,background:'rgba(255,255,255,0.5)',borderRadius:4,marginTop:8,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${pct}%`,background:theme.primary,borderRadius:4,transition:'width 0.5s'}}/>
-              </div>
-            </div>
-            {/* 파트너 — 파트너의 lifeItems는 Firestore에 직접 없어서 weeklyLog 기반 표시 */}
-            <div style={{background:'rgba(255,255,255,0.7)',borderRadius:14,padding:'14px',textAlign:'center'}}>
-              <div style={{fontSize:22,marginBottom:4}}>{partnerData.animal||'🐻'}</div>
-              <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:6}}>{partnerData.name||'룸메이트'}</div>
-              <div style={{fontSize:20,fontWeight:800,color:'#374151'}}>{(partnerData.weeklyLog||{})[todayStr]||0}%</div>
-              <div style={{fontSize:11,color:C.muted,marginTop:2}}>오늘 달성률</div>
-              <div style={{height:4,background:'rgba(0,0,0,0.08)',borderRadius:4,marginTop:8,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${(partnerData.weeklyLog||{})[todayStr]||0}%`,background:'#374151',borderRadius:4,transition:'width 0.5s'}}/>
-              </div>
-            </div>
+          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
+            <span style={{fontSize:13,color:C.text3}}>등록 식재료</span>
+            <span style={{fontSize:13,fontWeight:700,color:C.text2}}>{foods.length}개</span>
           </div>
-          {/* 주간 스트릭 비교 */}
-          <div style={{marginTop:12,padding:'12px',background:'rgba(255,255,255,0.6)',borderRadius:12,display:'flex',justifyContent:'space-around'}}>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontSize:18,fontWeight:800,color:theme.primary}}>🔥{partnerData?.streak?.count||0}</div>
-              <div style={{fontSize:10,color:C.muted}}>내 스트릭</div>
-            </div>
-            <div style={{width:1,background:C.border2}}/>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontSize:18,fontWeight:800,color:'#374151'}}>🔥{partnerData?.partnerStreak||0}</div>
-              <div style={{fontSize:10,color:C.muted}}>{partnerData.name||'룸메이트'} 스트릭</div>
-            </div>
+          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card2,borderRadius:10}}>
+            <span style={{fontSize:13,color:C.text3}}>생활 관리 항목</span>
+            <span style={{fontSize:13,fontWeight:700,color:C.text2}}>{lifeItems.length}개</span>
           </div>
         </div>
-      ) : (
-        <>
-          {/* 내 공유 코드 */}
-          <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${theme.mid}`}}>
-            <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:8}}>📤 내 공유 코드</div>
-            {shareCode ? (
-              <div>
-                <div style={{fontSize:32,fontWeight:900,color:theme.primary,letterSpacing:6,textAlign:'center',padding:'14px',background:C.card,borderRadius:12,border:`2px dashed ${theme.border}`,marginBottom:8,fontFamily:'monospace'}}>{shareCode}</div>
-                <div style={{fontSize:11,color:C.muted,textAlign:'center',marginBottom:8}}>이 코드를 룸메이트에게 알려주세요</div>
-                <button onClick={()=>{navigator.clipboard?.writeText(shareCode);showMsg('클립보드에 복사됐어요!','success');}} style={{width:'100%',padding:'9px',borderRadius:10,border:`1.5px solid ${theme.mid}`,background:C.card,color:theme.primary,fontSize:12,fontWeight:700,cursor:'pointer',margin:0}}>📋 코드 복사</button>
-              </div>
-            ):(
-              <button onClick={generateCode} style={{width:'100%',padding:'13px',borderRadius:12,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>🔑 공유 코드 생성</button>
-            )}
-          </div>
-
-          {/* 코드 입력 */}
-          <div style={{background:C.card,borderRadius:18,padding:'20px',marginBottom:14,border:`1.5px solid ${C.border}`}}>
-            <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:5}}>📥 룸메이트 코드 입력</div>
-            <div style={{fontSize:12,color:C.muted,marginBottom:12}}>룸메이트의 공유 코드를 입력하면 바로 연결돼요</div>
-            <div style={{display:'flex',gap:7}}>
-              <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''))} maxLength={6}
-                placeholder="6자리 코드"
-                style={{flex:1,padding:'13px 16px',border:`2px solid ${inputCode.length===6?theme.primary:C.border2}`,borderRadius:12,fontSize:18,outline:'none',letterSpacing:5,fontWeight:800,textAlign:'center',background:C.input,color:C.text,transition:'border-color 0.15s',fontFamily:'monospace'}}
-              />
-              <button onClick={connectShare} disabled={loading||inputCode.length<6} style={{padding:'13px 18px',borderRadius:12,border:'none',background:inputCode.length>=6?theme.primary:C.card3,color:inputCode.length>=6?'#fff':C.muted,fontSize:14,fontWeight:700,cursor:inputCode.length>=6?'pointer':'default',width:'auto',margin:0,transition:'all 0.15s'}}>
-                {loading?'..':'연결'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* 내 현황 요약 */}
-      <div style={{background:C.card,borderRadius:18,padding:'18px',border:`1.5px solid ${C.border}`}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>📊 내 오늘 현황</div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
-          {[
-            {label:'달성률',value:`${pct}%`,color:theme.primary},
-            {label:'식재료',value:`${foods.length}개`,color:'#16a34a'},
-            {label:'생활항목',value:`${lifeItems.length}개`,color:'#f97316'},
-          ].map(s=>(
-            <div key={s.label} style={{textAlign:'center',padding:'10px 6px',background:C.card2,borderRadius:12}}>
-              <div style={{fontSize:18,fontWeight:800,color:s.color}}>{s.value}</div>
-              <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <div style={{marginTop:10,fontSize:11,color:C.muted,textAlign:'center'}}>💡 공유 기능은 현재 베타 버전이에요</div>
       </div>
     </div>
   );
@@ -3066,10 +3172,34 @@ function AuthScreen({mode, onSuccess, onBack}) {
     if(!fb) return;
     setLoading(true); setError('');
     try {
+      // popup 먼저 시도
       const cred = await fb.signInWithPopup(fb.auth, fb.googleProvider);
       onSuccess(cred.user);
     } catch(err) {
-      setError('구글 로그인에 실패했어요.');
+      console.error('Google popup error:', err.code, err.message);
+      // 팝업 차단·미지원 시 redirect로 폴백
+      if(
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        try {
+          await fb.signInWithRedirect(fb.auth, fb.googleProvider);
+          // redirect 후 페이지가 이동되므로 여기서 끝남
+          return;
+        } catch(redirectErr) {
+          console.error('Google redirect error:', redirectErr.code);
+          setError(`구글 로그인 실패 (${redirectErr.code})`);
+        }
+      } else {
+        const msgs = {
+          'auth/unauthorized-domain': '현재 도메인이 Firebase에 등록되지 않았어요. Firebase Console → Authentication → 승인된 도메인에 현재 주소를 추가해주세요.',
+          'auth/operation-not-allowed': 'Google 로그인이 비활성화되어 있어요. Firebase Console → Authentication → Sign-in method에서 Google을 활성화해주세요.',
+          'auth/network-request-failed': '네트워크 오류예요. 인터넷 연결을 확인해주세요.',
+        };
+        setError(msgs[err.code] || `구글 로그인 실패 (${err.code || '알 수 없는 오류'})`);
+      }
     }
     setLoading(false);
   }
@@ -3452,41 +3582,6 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
   const [editName, setEditName] = React.useState(userName);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [deleteStep, setDeleteStep] = React.useState('confirm');
-  const [deletePassword, setDeletePassword] = React.useState('');
-  const [deleteLoading, setDeleteLoading] = React.useState(false);
-  const [deleteError, setDeleteError] = React.useState('');
-
-  async function handleDeleteAccount() {
-    if(!fb||!user) return;
-    setDeleteLoading(true); setDeleteError('');
-    try {
-      const uid = user.uid;
-      // Firestore 데이터 삭제
-      const colls = ['foods','lifeItems','shoppingItems','diaries'];
-      for(const col of colls) {
-        const snap = await fb.getDocs(fb.collection(fb.db,'users',uid,col));
-        if(snap.docs.length > 0) {
-          const batch = fb.writeBatch(fb.db);
-          snap.docs.forEach(d => batch.delete(d.ref));
-          await batch.commit();
-        }
-      }
-      await fb.deleteDoc(fb.doc(fb.db,'users',uid));
-      // Firebase Auth 계정 삭제
-      await fb.deleteUser(user);
-    } catch(e) {
-      console.error('Delete account error:', e);
-      if(e.code === 'auth/requires-recent-login') {
-        // 오래된 세션이면 로그아웃 후 재로그인 유도
-        setDeleteError('보안을 위해 로그아웃 후 다시 로그인하고 삭제해주세요');
-      } else {
-        setDeleteError(e.message || '오류가 발생했어요');
-      }
-      setDeleteLoading(false);
-    }
-  }
 
   const SECTION_COLORS = [
     {id:'purple',label:'보라',primary:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe'},
@@ -3519,12 +3614,9 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22}}>
-        <div>
-          <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>⚙️ 설정</div>
-          <div style={{fontSize:13,color:C.muted}}>프로필과 앱 스타일을 바꿔요</div>
-        </div>
-        <GuideBtn pageId='settings'/>
+      <div style={{marginBottom:22}}>
+        <div style={{fontSize:21,fontWeight:800,color:C.text,marginBottom:3}}>⚙️ 설정</div>
+        <div style={{fontSize:13,color:C.muted}}>프로필과 앱 스타일을 바꿔요</div>
       </div>
 
       {/* 프로필 카드 */}
@@ -3641,7 +3733,7 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
       {/* 계정 정보 */}
       <div style={{background:C.card,borderRadius:18,padding:'20px 22px',border:`1.5px solid ${C.border}`,marginBottom:14}}>
         {sectionTitle('🔐 계정 정보')}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:`1px solid ${C.border}`}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f9fafb'}}>
           <div style={{fontSize:13,color:C.text3}}>이메일</div>
           <div style={{fontSize:13,fontWeight:600,color:C.text}}>{user?.email||'-'}</div>
         </div>
@@ -3652,43 +3744,6 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
           </div>
         </div>
       </div>
-
-      {/* 계정 삭제 */}
-      {!showDeleteConfirm ? (
-        <div style={{marginBottom:14}}>
-          <button onClick={()=>setShowDeleteConfirm(true)} style={{
-            width:'100%',padding:'13px',borderRadius:14,border:'1.5px solid #fecaca',
-            background:'#fef2f2',color:'#ef4444',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
-          }}>🗑️ 계정 삭제</button>
-        </div>
-      ) : (
-        <div style={{background:'#fef2f2',borderRadius:18,padding:'20px 22px',border:'2px solid #fecaca',marginBottom:14}}>
-          <div style={{fontSize:16,fontWeight:800,color:'#ef4444',marginBottom:8}}>⚠️ 정말 삭제하시겠어요?</div>
-          <div style={{fontSize:13,color:'#b91c1c',lineHeight:1.7,marginBottom:16}}>
-            계정을 삭제하면 아래 모든 데이터가 <strong>영구적으로</strong> 삭제돼요:<br/>
-            • 식재료 목록, 생활 관리 항목<br/>
-            • 달성 기록, 스트릭, 일기<br/>
-            • 장보기 목록, 설정<br/>
-            <strong style={{color:'#ef4444'}}>복구가 절대 불가능해요.</strong>
-          </div>
-          {deleteStep === 'confirm' && (
-            <>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={handleDeleteAccount} disabled={deleteLoading} style={{
-                  flex:1,padding:'12px',borderRadius:12,border:'none',
-                  background:deleteLoading?'#fca5a5':'#ef4444',color:'#fff',
-                  fontSize:14,fontWeight:700,cursor:deleteLoading?'default':'pointer',margin:0,
-                }}>{deleteLoading?'삭제 중...':'삭제 확인'}</button>
-                <button onClick={()=>{setShowDeleteConfirm(false);setDeleteStep('confirm');setDeletePassword('');setDeleteError('');}} style={{
-                  flex:1,padding:'12px',borderRadius:12,border:`1.5px solid ${C.border2}`,
-                  background:C.card,color:C.text3,fontSize:14,fontWeight:700,cursor:'pointer',margin:0,
-                }}>취소</button>
-              </div>
-              {deleteError&&<div style={{marginTop:10,fontSize:12,color:'#ef4444',fontWeight:600,textAlign:'center'}}>{deleteError}</div>}
-            </>
-          )}
-        </div>
-      )}
 
       {/* 앱 정보 */}
       <div style={{background:C.card,borderRadius:18,padding:'20px 22px',border:`1.5px solid ${C.border}`,marginBottom:20}}>
@@ -3722,14 +3777,10 @@ function SettingsPage({user, fb, userName, setUserName, animal, setAnimal, theme
 // ============================================================
 function Onboarding({userName, onComplete}) {
   const [step, setStep] = React.useState(0);
-  const [setupMode, setSetupMode] = React.useState(null);
   const [lifeChoice, setLifeChoice] = React.useState(null);
   const [selectedAnimal, setSelectedAnimal] = React.useState('🐻');
   const [selectedTheme, setSelectedTheme] = React.useState('purple');
-  const [showingGuide, setShowingGuide] = React.useState(false);
-  const [guidePageIdx, setGuidePageIdx] = React.useState(0);
 
-  const GUIDE_PAGES = ['home','food','life','mission'];
   const TOTAL_STEPS = 3;
   const theme = getTheme(selectedTheme);
 
@@ -3739,11 +3790,6 @@ function Onboarding({userName, onComplete}) {
     <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:'14px',borderRadius:16,border:'none',background:disabled?'#e5e7eb':theme.primary,color:disabled?'#9ca3af':'#fff',fontSize:15,fontWeight:700,cursor:disabled?'default':'pointer',transition:'all 0.2s',marginTop:6}}>
       {label}
     </button>
-  );
-  const dots = (active) => (
-    <div style={{display:'flex',gap:6,marginBottom:18}}>
-      {[0,1,2].map(i=><div key={i} style={{width:i===active?24:8,height:8,borderRadius:8,background:i===active?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
-    </div>
   );
 
   // Step 0: 웰컴
@@ -3758,7 +3804,7 @@ function Onboarding({userName, onComplete}) {
           딱 3단계만 설정하면<br/>나만의 생활 관리가 시작돼요
         </div>
         <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:24}}>
-          {[0,1,2].map(i=><div key={i} style={{width:i===0?24:8,height:8,borderRadius:8,background:i===0?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
+          {[0,1,2].map(i=><div key={i} style={{width:i===step?24:8,height:8,borderRadius:8,background:i===step?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
         </div>
         <button onClick={()=>setStep(1)} style={{width:'100%',padding:'15px',borderRadius:16,border:'none',background:theme.primary,color:C.card,fontSize:16,fontWeight:700,cursor:'pointer'}}>
           시작하기 →
@@ -3767,15 +3813,18 @@ function Onboarding({userName, onComplete}) {
     </div>
   );
 
-  // Step 1: 테마 + 캐릭터
+  // Step 1: 테마 색상 + 동물 선택
   if(step === 1) return (
     <div className="fade-in" style={bgStyle}>
       <div style={cardStyle}>
-        {dots(1)}
+        <div style={{display:'flex',gap:6,marginBottom:18}}>
+          {[0,1,2].map(i=><div key={i} style={{width:i===1?24:8,height:8,borderRadius:8,background:i===1?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
+        </div>
         <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 1 / 3</div>
         <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:3}}>나만의 스타일을 골라요</div>
         <div style={{fontSize:13,color:C.muted,marginBottom:18}}>앱의 색상과 캐릭터를 선택해요</div>
 
+        {/* 테마 색상 */}
         <div style={{fontSize:13,fontWeight:700,color:C.text2,marginBottom:10}}>🎨 메인 색상</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:8,marginBottom:20}}>
           {THEMES.map(t=>(
@@ -3803,6 +3852,7 @@ function Onboarding({userName, onComplete}) {
             }}>{a}</button>
           ))}
         </div>
+        {/* 미리보기 */}
         <div style={{background:theme.bg,borderRadius:14,padding:'12px 14px',border:`1.5px solid ${theme.mid}`,marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:24}}>{selectedAnimal}</span>
           <div>
@@ -3815,183 +3865,39 @@ function Onboarding({userName, onComplete}) {
     </div>
   );
 
-  // Step 2: 체크리스트 구성 방식 선택
-  if(step === 2) return (
-    <div className="fade-in" style={bgStyle}>
-      <div style={cardStyle}>
-        {dots(2)}
-        <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 2 / 3</div>
-        <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>체크리스트를 어떻게 시작할까요?</div>
-        <div style={{fontSize:13,color:C.muted,marginBottom:20}}>나중에 생활관리 페이지에서 자유롭게 수정할 수 있어요</div>
-
-        {/* 모드 선택 */}
-        {!setupMode ? (
-          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
-            {/* 추천으로 시작 */}
-            <button onClick={()=>setSetupMode('preset')} style={{
-              padding:'18px 20px',borderRadius:16,border:`2px solid ${theme.mid}`,
-              background:theme.bg,cursor:'pointer',width:'100%',margin:0,textAlign:'left',
-              transition:'all 0.15s',display:'flex',alignItems:'flex-start',gap:14,
-            }}
-              onMouseEnter={e=>e.currentTarget.style.borderColor=theme.primary}
-              onMouseLeave={e=>e.currentTarget.style.borderColor=theme.mid}
-            >
-              <span style={{fontSize:30,lineHeight:1,flexShrink:0}}>✨</span>
-              <div>
-                <div style={{fontSize:15,fontWeight:800,color:theme.primary,marginBottom:4}}>추천으로 시작하기</div>
-                <div style={{fontSize:12,color:C.text3,lineHeight:1.6}}>자취 경력에 맞게 루틴·청소·생활 항목을<br/>자동으로 설정해드려요</div>
-                <div style={{marginTop:6,display:'flex',gap:5,flexWrap:'wrap'}}>
-                  {['💧 물 마시기','🚽 화장실 청소','🧺 빨래','🗑️ 분리수거'].map(t=>(
-                    <span key={t} style={{fontSize:10,background:'rgba(255,255,255,0.8)',color:theme.primary,padding:'2px 8px',borderRadius:20,fontWeight:600}}>{t}</span>
-                  ))}
-                </div>
-              </div>
-            </button>
-
-            {/* 직접 설정 */}
-            <button onClick={()=>{ setSetupMode('manual'); setLifeChoice('manual'); }} style={{
-              padding:'18px 20px',borderRadius:16,border:`2px solid ${C.border}`,
-              background:C.card,cursor:'pointer',width:'100%',margin:0,textAlign:'left',
-              transition:'all 0.15s',display:'flex',alignItems:'flex-start',gap:14,
-            }}
-              onMouseEnter={e=>e.currentTarget.style.borderColor=theme.primary}
-              onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}
-            >
-              <span style={{fontSize:30,lineHeight:1,flexShrink:0}}>✏️</span>
-              <div>
-                <div style={{fontSize:15,fontWeight:800,color:C.text,marginBottom:4}}>직접 설정하기</div>
-                <div style={{fontSize:12,color:C.text3,lineHeight:1.6}}>빈 화면에서 시작해서<br/>원하는 항목을 하나씩 추가해요</div>
-              </div>
-            </button>
-          </div>
-        ) : setupMode === 'preset' ? (
-          // 자취 경력 선택
-          <div>
-            <button onClick={()=>setSetupMode(null)} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:12,padding:'0 0 12px 0',width:'auto',margin:0,display:'flex',alignItems:'center',gap:4}}>
-              ← 뒤로
-            </button>
-            <div style={{fontSize:14,fontWeight:700,color:C.text2,marginBottom:12}}>자취한 지 얼마나 됐어요?</div>
-            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-              {[
-                {key:'방금 이사', icon:'🏠', label:'방금 이사했어요', desc:`${ONBOARDING_PRESETS['방금 이사'].length}개 항목 · 기본 루틴 위주`, count: ONBOARDING_PRESETS['방금 이사'].length},
-                {key:'1년 이상',  icon:'🌱', label:'자취한 지 1년 이상', desc:`${ONBOARDING_PRESETS['1년 이상'].length}개 항목 · 생활 관리 포함`, count: ONBOARDING_PRESETS['1년 이상'].length},
-                {key:'오래됨',   icon:'🌳', label:'오래된 자취생이에요', desc:`${ONBOARDING_PRESETS['오래됨'].length}개 항목 · 전체 세트`, count: ONBOARDING_PRESETS['오래됨'].length},
-              ].map(opt=>(
-                <button key={opt.key} onClick={()=>setLifeChoice(opt.key)} style={{
-                  padding:'14px 16px',borderRadius:14,
-                  border:`2px solid ${lifeChoice===opt.key?theme.primary:C.border}`,
-                  background:lifeChoice===opt.key?theme.bg:C.card,
-                  cursor:'pointer',width:'100%',margin:0,textAlign:'left',
-                  transition:'all 0.15s',display:'flex',alignItems:'center',gap:12,
-                }}>
-                  <span style={{fontSize:24}}>{opt.icon}</span>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:lifeChoice===opt.key?theme.primary:C.text}}>{opt.label}</div>
-                    <div style={{fontSize:11,color:C.muted,marginTop:1}}>{opt.desc}</div>
-                  </div>
-                  {lifeChoice===opt.key&&<span style={{fontSize:16,color:theme.primary}}>✓</span>}
-                </button>
-              ))}
-            </div>
-            {/* 선택된 프리셋 미리보기 */}
-            {lifeChoice && lifeChoice !== 'manual' && (
-              <div style={{background:C.card2,borderRadius:12,padding:'12px 14px',marginBottom:12,maxHeight:140,overflowY:'auto'}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.text3,marginBottom:8}}>추가될 항목 미리보기</div>
-                <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                  {(ONBOARDING_PRESETS[lifeChoice]||[]).map((item,i)=>(
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:C.text3}}>
-                      <span>{item.emoji}</span>
-                      <span style={{flex:1}}>{item.text}</span>
-                      <span style={{fontSize:10,color:C.muted,background:C.card,padding:'1px 6px',borderRadius:20}}>
-                        {item.section}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {nextBtn(()=>{if(lifeChoice)setStep(3);}, !lifeChoice, '다음 →')}
-          </div>
-        ) : null}
-
-        {/* 직접 설정 → 바로 완료 */}
-        {setupMode === 'manual' && lifeChoice === 'manual' && (
-          <div style={{textAlign:'center',padding:'8px 0 4px'}}>
-            <div style={{fontSize:32,marginBottom:8}}>✏️</div>
-            <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:6}}>직접 설정을 선택했어요</div>
-            <div style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.7}}>
-              생활 관리 페이지에서<br/>루틴·청소·생활 항목을 자유롭게 추가해요
-            </div>
-            <button onClick={()=>setSetupMode(null)} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:12,marginBottom:12,width:'auto'}}>← 다시 선택</button>
-            {nextBtn(()=>setStep(3), false, '시작하기 →')}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Step 3: 사용법 둘러보기
-  if(step === 3) {
-    const guideId = GUIDE_PAGES[guidePageIdx];
-    const guide = PAGE_GUIDES[guideId];
+  // Step 2: 자취 경력
+  if(step === 2) {
+    const options = ['방금 이사', '1년 이상', '오래됨'];
+    const labels = ['방금 이사했어요', '자취한 지 1년 이상', '오래된 자취생이에요'];
+    const icons = ['🏠', '🌱', '🌳'];
+    const descs = ['기본 생활 루틴을 추천해드려요', '일반적인 생활 관리 세트를 설정해요', '전체 생활 관리 세트를 설정해요'];
     return (
       <div className="fade-in" style={bgStyle}>
-        <div style={{...cardStyle, maxWidth:460}}>
-          {dots(2)}
-          <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 3 / 3</div>
-          <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>주요 기능을 살펴볼게요</div>
-          <div style={{fontSize:13,color:C.muted,marginBottom:16}}>나중에 각 페이지의 <strong style={{color:theme.primary}}>? 버튼</strong>으로 언제든지 다시 볼 수 있어요</div>
-          <div style={{display:'flex',gap:6,marginBottom:16,flexWrap:'wrap'}}>
-            {GUIDE_PAGES.map((pid,i)=>{
-              const g=PAGE_GUIDES[pid];
-              return (
-                <button key={pid} onClick={()=>setGuidePageIdx(i)} style={{
-                  padding:'6px 12px',borderRadius:20,border:`1.5px solid ${guidePageIdx===i?theme.primary:theme.mid}`,
-                  background:guidePageIdx===i?theme.primary:theme.bg,
-                  color:guidePageIdx===i?'#fff':theme.primary,
-                  fontSize:12,fontWeight:guidePageIdx===i?700:500,cursor:'pointer',width:'auto',margin:0,
-                }}>{g.title.split(' ').slice(0,2).join(' ')}</button>
-              );
-            })}
+        <div style={cardStyle}>
+          <div style={{display:'flex',gap:6,marginBottom:18}}>
+            {[0,1,2].map(i=><div key={i} style={{width:i===2?24:8,height:8,borderRadius:8,background:i===2?theme.primary:theme.mid,transition:'all 0.3s'}}/>)}
           </div>
-          <GuideInline guide={guide} theme={theme}/>
-          <div style={{display:'flex',gap:8,marginTop:16}}>
-            {guidePageIdx < GUIDE_PAGES.length-1 ? (
-              <button onClick={()=>setGuidePageIdx(p=>p+1)} style={{flex:2,padding:'13px',borderRadius:14,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0}}>다음 기능 →</button>
-            ) : (
-              <button onClick={()=>onComplete(lifeChoice||'manual',selectedAnimal,selectedTheme)} style={{flex:2,padding:'13px',borderRadius:14,border:'none',background:theme.primary,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',margin:0,boxShadow:`0 4px 16px ${theme.primary}55`}}>🎉 시작하기!</button>
-            )}
-            <button onClick={()=>onComplete(lifeChoice||'manual',selectedAnimal,selectedTheme)} style={{flex:1,padding:'13px',borderRadius:14,border:`1.5px solid ${C.border2}`,background:C.card,color:C.text3,fontSize:13,fontWeight:600,cursor:'pointer',margin:0}}>건너뛰기</button>
+          <div style={{fontSize:11,color:theme.border,fontWeight:700,marginBottom:5}}>STEP 2 / 3</div>
+          <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:4}}>자취한 지 얼마나 됐어요?</div>
+          <div style={{fontSize:13,color:C.muted,marginBottom:18}}>선택에 맞게 생활 관리 항목을 자동으로 설정해드려요</div>
+          <div style={{display:'flex',flexDirection:'column',gap:9,marginBottom:18}}>
+            {options.map((opt,i)=>(
+              <button key={opt} onClick={()=>setLifeChoice(opt)} style={{padding:'14px 16px',borderRadius:15,border:`2px solid ${lifeChoice===opt?theme.primary:'#f3f4f6'}`,background:lifeChoice===opt?theme.bg:'#fafafa',cursor:'pointer',width:'100%',margin:0,textAlign:'left',transition:'all 0.15s',display:'flex',alignItems:'center',gap:12}}>
+                <span style={{fontSize:22}}>{icons[i]}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:lifeChoice===opt?theme.primary:C.text}}>{labels[i]}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>{descs[i]}</div>
+                </div>
+                {lifeChoice===opt&&<span style={{fontSize:15,color:theme.primary}}>✓</span>}
+              </button>
+            ))}
           </div>
+          {nextBtn(()=>{if(lifeChoice)onComplete(lifeChoice,selectedAnimal,selectedTheme);}, !lifeChoice, '완료 →')}
         </div>
       </div>
     );
   }
   return null;
-}
-
-// 온보딩 인라인 가이드 슬라이더
-function GuideInline({guide, theme}) {
-  const [idx, setIdx] = React.useState(0);
-  React.useEffect(()=>setIdx(0),[guide]);
-  const step = guide.steps[idx];
-  return (
-    <div>
-      <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',border:`1.5px solid ${theme.mid}`,marginBottom:12,minHeight:130}}>
-        <div style={{fontSize:30,marginBottom:8,lineHeight:1}}>{step.emoji}</div>
-        <div style={{fontSize:15,fontWeight:800,color:theme.primary,marginBottom:5}}>{step.title}</div>
-        <div style={{fontSize:13,color:C.text2,lineHeight:1.7}}>{step.desc}</div>
-      </div>
-      <div style={{display:'flex',gap:5,justifyContent:'center'}}>
-        {guide.steps.map((_,i)=>(
-          <button key={i} onClick={()=>setIdx(i)} style={{
-            width:i===idx?20:7,height:7,borderRadius:7,border:'none',cursor:'pointer',margin:0,padding:0,
-            background:i===idx?theme.primary:theme.mid,transition:'all 0.2s',
-          }}/>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ============================================================
@@ -4002,9 +3908,15 @@ function App() {
   const [authState, setAuthState] = React.useState('loading'); // loading | welcome | login | signup | onboarding | app
   const [user, setUser] = React.useState(null);
 
-  // Firebase Auth 상태 감지
+  // Firebase Auth 상태 감지 + Redirect 결과 처리
   React.useEffect(() => {
     if(!fb) return;
+    // Redirect 로그인 결과 처리 (페이지 복귀 후)
+    fb.getRedirectResult(fb.auth).then(result => {
+      // result가 있으면 redirect 로그인 성공 — onAuthStateChanged가 자동 처리
+    }).catch(err => {
+      console.error('Redirect result error:', err.code, err.message);
+    });
     const unsub = fb.onAuthStateChanged(fb.auth, async (u) => {
       if(u) {
         setUser(u);
@@ -4149,8 +4061,7 @@ function App() {
   async function completeOnboarding(choice, chosenAnimal, chosenTheme) {
     if(!fb||!user) return;
     const uid = user.uid;
-    // 'manual' 선택 시 프리셋 없이 시작
-    const presets = choice === 'manual' ? [] : (ONBOARDING_PRESETS[choice]||[]).map(item => ({
+    const presets = (ONBOARDING_PRESETS[choice]||[]).map((item,i) => ({
       ...item, done:false, lastDone:null, freqDays:[], createdAt:new Date().toISOString()
     }));
     await fb.setDoc(fb.doc(fb.db,'users',uid), {
@@ -4173,7 +4084,7 @@ function App() {
   const [page, setPage] = React.useState('home');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const {isMob, isTablet} = useResponsive();
-  const PAGE_TITLES = {home:'🏠 홈', food:'🥕 식재료', life:'🌀 생활 관리', shop:'🛒 장보기', report:'📊 월간 리포트', diary:'📝 메모·일기', mission:'🎯 미션', share:'👥 공유', hub:'🔖 추천', tips:'💡 생활 팁', settings:'⚙️ 설정'};
+  const PAGE_TITLES = {home:'🏠 홈', food:'🥕 식재료', life:'🌀 생활 관리', reflect:'🪞 나를 돌아보기', shop:'🛒 장보기', report:'📊 월간 리포트', diary:'📝 메모·일기', mission:'🎯 미션', share:'👥 공유', hub:'🔖 추천', tips:'💡 생활 팁', settings:'⚙️ 설정'};
 
   // ── 로딩 ──
   if(authState === 'loading') return (
@@ -4212,7 +4123,7 @@ function App() {
     {id:'home',    emoji:'🏠', label:'홈'},
     {id:'food',    emoji:'🥕', label:'식재료'},
     {id:'life',    emoji:'🌀', label:'생활'},
-    {id:'hub',     emoji:'🔖', label:'추천'},
+    {id:'reflect', emoji:'🪞', label:'돌아보기'},
     {id:'settings',emoji:'⚙️', label:'설정'},
   ];
   const isDark = darkMode;
@@ -4228,7 +4139,7 @@ function App() {
         <div className="mobile-topbar" style={{background:C.card,padding:'12px 18px',borderBottom:`1px solid ${isDark?'#334155':'#f0edf8'}`,alignItems:'center',gap:13,position:'sticky',top:0,zIndex:30}}>
           <button onClick={()=>setSidebarOpen(true)} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,padding:4,color:currentTheme.primary,width:'auto',margin:0}}>☰</button>
           <div style={{fontSize:15,fontWeight:700,color:C.text,flex:1}}>{PAGE_TITLES[page]}</div>
-          <div style={{fontSize:13,fontWeight:900,color:currentTheme.primary}}>🏠 LifeFit</div>
+          <div onClick={()=>setPage('home')} style={{fontSize:13,fontWeight:900,color:currentTheme.primary,cursor:'pointer'}}>🏠 LifeFit</div>
         </div>
 
         {/* 메인 콘텐츠 */}
@@ -4236,6 +4147,7 @@ function App() {
           {page==='home'&&<HomePage foods={foods} lifeItems={lifeItems} streak={streak} weeklyLog={weeklyLog} onNav={setPage} userName={userName} onQuickAdd={addFood} onQuickCheck={toggleLife}/>}
           {page==='food'&&<FoodPage foods={foods} onAdd={addFood} onDelete={deleteFood} onEdit={editFood} fb={fb} user={user}/>}
           {page==='life'&&<LifePage lifeItems={lifeItems} onAdd={addLife} onToggle={toggleLife} onDelete={deleteLife} onEdit={editLife} streak={streak} weeklyLog={weeklyLog} updateStreak={updateStreak} fb={fb} user={user}/>}
+          {page==='reflect'&&<ReflectPage fb={fb} user={user} lifeItems={lifeItems} weeklyLog={weeklyLog} streak={streak}/>}
           {page==='report'&&<ReportPage weeklyLog={weeklyLog} lifeItems={lifeItems} foods={foods} streak={streak}/>}
           {page==='diary'&&<DiaryPage fb={fb} user={user}/>}
           {page==='mission'&&<MissionPage streak={streak} lifeItems={lifeItems} weeklyLog={weeklyLog} animal={animal} foods={foods} fb={fb} user={user}/>}
