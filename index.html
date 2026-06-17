@@ -69,10 +69,10 @@
 </head>
 <body>
 <div id="root"></div>
-<!-- Firebase SDK (compat - Babel과 충돌 없음) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBk7oAh970wN06ZokSBQ42OIXyT_Q91ULY",
@@ -80,70 +80,64 @@
     projectId: "mylife-app-f8568",
     storageBucket: "mylife-app-f8568.firebasestorage.app",
     messagingSenderId: "430376673684",
-    appId: "1:430376673684:web:907a05eb290542b618af81",
-    measurementId: "G-T59TS3GE2P"
+    appId: "1:430376673684:web:907a05eb290542b618af81"
   };
-
   firebase.initializeApp(firebaseConfig);
-  const _auth = firebase.auth();
-  const _db = firebase.firestore();
-  const _googleProvider = new firebase.auth.GoogleAuthProvider();
-
-  // React에서 접근 가능하도록 전역 노출 (기존 API와 동일하게 매핑)
+  var _auth = firebase.auth();
+  var _db = firebase.firestore();
+  var _gp = new firebase.auth.GoogleAuthProvider();
   window._firebase = {
-    auth: _auth,
-    db: _db,
-    googleProvider: _googleProvider,
-    // Auth
-    onAuthStateChanged: (auth, cb) => auth.onAuthStateChanged(cb),
-    signInWithEmailAndPassword: (auth, email, pw) => auth.signInWithEmailAndPassword(email, pw),
-    createUserWithEmailAndPassword: (auth, email, pw) => auth.createUserWithEmailAndPassword(email, pw),
-    signOut: (auth) => auth.signOut(),
-    signInWithPopup: (auth, provider) => auth.signInWithPopup(provider),
-    updateProfile: (user, data) => user.updateProfile(data),
-    deleteUser: (user) => user.delete(),
-    reauthenticateWithCredential: (user, cred) => user.reauthenticateWithCredential(cred),
+    auth: _auth, db: _db, googleProvider: _gp,
+    onAuthStateChanged: function(auth,cb){ return auth.onAuthStateChanged(cb); },
+    signInWithEmailAndPassword: function(auth,e,p){ return auth.signInWithEmailAndPassword(e,p); },
+    createUserWithEmailAndPassword: function(auth,e,p){ return auth.createUserWithEmailAndPassword(e,p); },
+    signOut: function(auth){ return auth.signOut(); },
+    signInWithPopup: function(auth,p){ return auth.signInWithPopup(p); },
+    updateProfile: function(user,d){ return user.updateProfile(d); },
+    deleteUser: function(user){ return user.delete(); },
+    reauthenticateWithCredential: function(user,c){ return user.reauthenticateWithCredential(c); },
     EmailAuthProvider: firebase.auth.EmailAuthProvider,
     GoogleAuthProvider: firebase.auth.GoogleAuthProvider,
-    // Firestore
-    doc: (db, ...pathSegments) => {
-      let ref = db;
-      for (let i = 0; i < pathSegments.length; i++) {
-        if (i % 2 === 0) ref = ref.collection(pathSegments[i]);
-        else ref = ref.doc(pathSegments[i]);
+    doc: function(db){ 
+      var args = Array.prototype.slice.call(arguments, 1);
+      var ref = db;
+      for(var i=0;i<args.length;i++){
+        if(i%2===0) ref=ref.collection(args[i]); else ref=ref.doc(args[i]);
       }
       return ref;
     },
-    collection: (db, ...pathSegments) => {
-      let ref = db;
-      for (let i = 0; i < pathSegments.length; i++) {
-        if (i % 2 === 0) ref = ref.collection(pathSegments[i]);
-        else ref = ref.doc(pathSegments[i]);
+    collection: function(db){
+      var args = Array.prototype.slice.call(arguments, 1);
+      var ref = db;
+      for(var i=0;i<args.length;i++){
+        if(i%2===0) ref=ref.collection(args[i]); else ref=ref.doc(args[i]);
       }
       return ref;
     },
-    getDoc: (ref) => ref.get().then(snap => {
-      // compat SDK에서 snap.exists는 boolean property → 함수처럼 사용하도록 래핑
-      if (typeof snap.exists === 'boolean') {
-        const origExists = snap.exists;
-        snap.exists = () => origExists;
-      }
-      return snap;
-    }),
-    setDoc: (ref, data, opts) => opts ? ref.set(data, opts) : ref.set(data),
-    updateDoc: (ref, data) => ref.update(data),
-    addDoc: (ref, data) => ref.add(data),
-    deleteDoc: (ref) => ref.delete(),
-    onSnapshot: (refOrQuery, cb) => refOrQuery.onSnapshot(cb),
-    getDocs: (query) => query.get(),
-    query: (ref, ...constraints) => {
-      let q = ref;
-      constraints.forEach(c => { q = c(q); });
+    getDoc: function(ref){ 
+      return ref.get().then(function(snap){
+        var origExists = snap.exists;
+        if(typeof origExists === 'boolean'){
+          snap.exists = function(){ return origExists; };
+        }
+        return snap;
+      });
+    },
+    setDoc: function(ref,data,opts){ return opts ? ref.set(data,opts) : ref.set(data); },
+    updateDoc: function(ref,data){ return ref.update(data); },
+    addDoc: function(ref,data){ return ref.add(data); },
+    deleteDoc: function(ref){ return ref.delete(); },
+    onSnapshot: function(ref,cb){ return ref.onSnapshot(cb); },
+    getDocs: function(q){ return q.get(); },
+    query: function(ref){
+      var constraints = Array.prototype.slice.call(arguments,1);
+      var q = ref;
+      constraints.forEach(function(c){ q = c(q); });
       return q;
     },
-    where: (field, op, val) => (ref) => ref.where(field, op, val),
-    serverTimestamp: () => firebase.firestore.FieldValue.serverTimestamp(),
-    writeBatch: (db) => db.batch(),
+    where: function(field,op,val){ return function(ref){ return ref.where(field,op,val); }; },
+    serverTimestamp: function(){ return firebase.firestore.FieldValue.serverTimestamp(); },
+    writeBatch: function(db){ return db.batch(); },
   };
   window._firebaseReady = true;
   window.dispatchEvent(new Event('firebaseReady'));
@@ -151,7 +145,7 @@
 
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
 <script type="text/babel" data-presets="react">
 // ============================================================
 // UTILS
@@ -2710,9 +2704,8 @@ function SharePage({fb, user, lifeItems, foods}) {
     setLoading(true); setMsg('');
     try {
       // 코드로 사용자 찾기
-      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      // Simplified: just store the code and show pending
-      await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {sharedFrom:inputCode.trim().toUpperCase()});
+      // (compat 방식 - fb 객체 직접 사용)
+            await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {sharedFrom:inputCode.trim().toUpperCase()});
       setSharedFrom(inputCode.trim().toUpperCase());
       setMsg('연결 요청을 보냈어요!');
     } catch(e) { setMsg('오류가 발생했어요.'); }
