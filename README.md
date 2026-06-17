@@ -1,6 +1,6 @@
 # 🏠 LifeFit — 자취 생활 관리 앱
 
-![main](./screenshots/main.png)
+<img src="./screenshots/main.png" width="600"/>
 
 - **배포 URL** : https://mylife-app-f8568.web.app
 - **Test ID** : test@lifefit.com
@@ -90,7 +90,7 @@ LifeFit/
 
 | 웰컴 · 로그인 · 회원가입 |
 |---|
-| ![splash_login](./screenshots/splash_login.gif) |
+| <img src="./screenshots/splash_login.gif" width="600"/> |
 
 <br>
 
@@ -106,7 +106,7 @@ LifeFit/
 
 | 온보딩 |
 |---|
-| ![onboarding](./screenshots/onboarding.gif) |
+| <img src="./screenshots/onboarding.gif" width="600"/> |
 
 <br>
 
@@ -125,7 +125,7 @@ LifeFit/
 
 | 홈 |
 |---|
-| ![home](./screenshots/home.gif) |
+| <img src="./screenshots/home.gif" width="600"/> |
 
 <br>
 
@@ -151,7 +151,7 @@ LifeFit/
 
 | 식재료 추가 | 장보기 목록 |
 |---|---|
-| ![food_add](./screenshots/food_add.gif) | ![shopping](./screenshots/shopping.gif) |
+| <img src="./screenshots/food_add.gif" width="600"/> | <img src="./screenshots/shopping.gif" width="600"/> |
 
 <br>
 
@@ -172,7 +172,7 @@ LifeFit/
 
 | 생활 관리 체크 | 월간 달력 |
 |---|---|
-| ![life_check](./screenshots/life_check.gif) | ![calendar](./screenshots/calendar.gif) |
+| <img src="./screenshots/life_check.gif" width="600"/> | <img src="./screenshots/calendar.gif" width="600"/> |
 
 <br>
 
@@ -198,7 +198,7 @@ LifeFit/
 
 | 하루 기록 |
 |---|
-| ![diary](./screenshots/diary.gif) |
+| <img src="./screenshots/diary.gif" width="600"/> |
 
 <br>
 
@@ -215,7 +215,7 @@ LifeFit/
 
 | 미션 & 성장 |
 |---|
-| ![mission](./screenshots/mission.gif) |
+| <img src="./screenshots/mission.gif" width="600"/> |
 
 <br>
 
@@ -232,7 +232,7 @@ LifeFit/
 
 | 생활 팁 |
 |---|
-| ![tips](./screenshots/tips.gif) |
+| <img src="./screenshots/tips.gif" width="600"/> |
 
 <br>
 
@@ -249,7 +249,7 @@ LifeFit/
 
 | 추천 |
 |---|
-| ![hub](./screenshots/hub.png) |
+| <img src="./screenshots/hub.png" width="600"/> |
 
 <br>
 
@@ -279,7 +279,7 @@ LifeFit/
 
 | 설정 & 다크모드 |
 |---|
-| ![settings](./screenshots/settings.gif) |
+| <img src="./screenshots/settings.gif" width="600"/> |
 
 <br>
 
