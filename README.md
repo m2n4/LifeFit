@@ -2,7 +2,7 @@
 
 ![LifeFit 대표 이미지](https://via.placeholder.com/800x400/7c3aed/ffffff?text=LifeFit+%E2%80%94+%EC%9E%90%EC%B7%A8+%EC%83%9D%ED%99%9C+%EA%B4%80%EB%A6%AC)
 
-- **배포 URL**: [[https://mylife-app-f8568.web.app](https://m2n4.github.io/LifeFit/)
+- **배포 URL**: [https://mylife-app-f8568.web.app](https://m2n4.github.io/LifeFit/)
 - **저장소**: https://github.com/m2n4/LifeFit
 
 
