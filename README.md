@@ -21,10 +21,8 @@
 
 ## 개발 환경
 
-- **Front-end** : React 18 (CDN UMD), Babel Standalone
+- **Front-end** : HTML, CSS, JavaScript, React 18 (CDN)
 - **Back-end / DB** : Firebase Authentication, Cloud Firestore
-- **상태 관리** : React useState / useContext (ThemeCtx · DarkCtx · CustomSectionsCtx)
-- **스타일** : CSS Variables 기반 라이트·다크 테마, Pretendard 폰트
 - **배포** : Firebase Hosting
 
 <br>
@@ -33,9 +31,8 @@
 
 | 분류 | 기술 |
 |---|---|
-| Frontend | React 18, Babel Standalone, CSS Variables |
-| Backend | Firebase Authentication, Cloud Firestore |
-| 상태관리 | React Context API (useContext) |
+| Frontend | HTML, CSS, JavaScript, React 18 (CDN) |
+| Backend / DB | Firebase Authentication, Cloud Firestore |
 | 배포 | Firebase Hosting |
 
 <br>
@@ -285,21 +282,23 @@ LifeFit/
 
 ## 트러블 슈팅
 
-**Firestore id 충돌 문제**
+**식재료 삭제가 안 되는 문제**
 
-- **문제** : `addDoc` 시 클라이언트에서 생성한 `id` 필드와 Firestore 자동 생성 `d.id`가 중복되어 삭제·수정 시 id 불일치가 발생했습니다.
-- **해결** : `onSnapshot` 핸들러에서 `{...d.data(), id: d.id}` 순서로 병합해 Firestore `d.id`가 항상 우선 적용되도록 수정했습니다.
+- **문제** : 식재료를 추가한 뒤 삭제 버튼을 눌러도 아무 반응이 없었습니다. 콘솔을 확인해보니 삭제할 때 사용하는 `id` 값이 `undefined`로 찍히고 있었습니다.
+- **원인** : Firebase에 데이터를 저장할 때 직접 만든 `id` 필드와, Firebase가 자동으로 부여하는 문서 id가 서로 달라서 엉뚱한 값을 참조하고 있었습니다.
+- **해결** : 데이터를 불러올 때 Firebase 문서 id(`d.id`)를 항상 마지막에 덮어씌우도록 코드를 수정했습니다. 이후 삭제·수정이 정상적으로 동작했습니다.
 
-**완료 취소 시 lastDone 복원 문제**
+**완료 체크를 취소하면 주기 표시가 이상해지는 문제**
 
-- **문제** : 완료 취소 시 `lastDone = null`로 설정하면 생활/청소 항목의 주기 진행 바가 초기화되는 문제가 있었습니다.
-- **해결** : 완료 취소 시 `lastDone = 어제 날짜`로 설정해 주기 계산을 유지하면서 오늘 완료 상태만 해제되도록 처리했습니다.
+- **문제** : 생활 관리 항목(예: 빨래 3일 주기)의 완료를 취소했더니 D-day 표시가 0으로 초기화되어 버렸습니다.
+- **원인** : 완료 취소 시 `lastDone` 값을 `null`로 지워버리니, 주기 계산 자체가 처음부터 다시 시작되는 문제였습니다.
+- **해결** : 완료 취소 시 `null` 대신 어제 날짜로 설정해, 오늘 완료 표시만 없애고 주기 계산은 그대로 유지되도록 수정했습니다.
 
 <br>
 
 ## 개선 목표
 
-- **PWA 전환** : `manifest.json`과 Service Worker를 추가해 홈 화면 설치 및 오프라인 지원 예정
-- **푸시 알림** : Firebase Cloud Messaging으로 유통기한 임박 및 루틴 리마인더 알림 구현 예정
-- **통계 고도화** : 카테고리별 식재료 낭비율, 가장 많이 완료한 루틴 통계 추가 예정
-- **공유 기능 완성** : 베타 상태인 룸메이트 공유 기능을 실시간 상대방 현황 조회까지 확장 예정
+- **알림 기능 추가** : 유통기한이 얼마 안 남은 식재료나 오늘 해야 할 루틴을 알림으로 받을 수 있으면 더 유용할 것 같아서 추후 구현해보고 싶습니다.
+- **공유 기능 완성** : 현재는 공유 코드 생성까지만 구현된 상태입니다. 룸메이트와 실시간으로 서로의 현황을 볼 수 있도록 기능을 완성하고 싶습니다.
+- **통계 더 보여주기** : 월간 리포트에 어떤 루틴을 가장 많이 완료했는지, 식재료를 얼마나 버렸는지 같은 통계도 추가하면 좋을 것 같습니다.
+- **모바일 앱처럼 설치** : PWA를 적용해서 스마트폰 홈 화면에 아이콘으로 추가할 수 있도록 만들고 싶습니다.
