@@ -4,10 +4,11 @@
 
 
 > **웹시스템설계 기말 프로젝트**
-> 제출일: 2026년 06월 18일<br/>
+
 > 개발 언어: HTML · CSS · JavaScript (React) | 백엔드: Firebase<br/>
 > 배포 주소: https://m2n4.github.io/LifeFit/<br/>
 > 저장소: https://github.com/m2n4/LifeFit
+> 
 ---
 
 ## 목차
