@@ -677,7 +677,7 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
               <div key={label} style={{background:C.card2,borderRadius:14,padding:'14px 16px',border:`1.5px solid ${C.border}`}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                   <div style={{fontSize:14,fontWeight:700,color:C.text}}>{label}</div>
-                  <Btn size="sm" onClick={()=>{items.forEach(item=>{if(!lifeItems.some(c=>c.text===item.text))onAdd({id:Date.now()+Math.random(),...item,done:false,lastDone:null,freqDays:[],createdAt:new Date().toISOString()});});setShowPackModal(false);}}>전체 추가</Btn>
+                  <Btn size="sm" onClick={()=>{items.forEach(item=>{if(!lifeItems.some(c=>c.text===item.text))onAdd({id:Date.now()+Math.random(),...item,done:false,lastDone:null,freqDays:item.freqDays||[],createdAt:new Date().toISOString()});});setShowPackModal(false);}}>전체 추가</Btn>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:5}}>
                   {items.map((item,idx)=>{
@@ -688,7 +688,7 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
                       <span style={{flex:1,fontSize:13,color:C.text2}}>{item.text}</span>
                       <span style={{fontSize:10,color:sec.color,background:sec.bg,padding:'1px 6px',borderRadius:20,border:`1px solid ${sec.border}`,fontWeight:600}}>{sec.icon} {item.section}</span>
                       <span style={{fontSize:10,color:C.muted}}>{item.freq==='daily'?'매일':item.intervalDays?`${item.intervalDays}일`:'매주'}</span>
-                      {already?<span style={{fontSize:11,color:'#16a34a',fontWeight:700}}>✓</span>:<button onClick={()=>onAdd({id:Date.now(),...item,done:false,lastDone:null,freqDays:[],createdAt:new Date().toISOString()})} style={{padding:'3px 8px',borderRadius:8,border:`1px solid ${C.border2}`,background:C.card,color:theme.primary,fontSize:11,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>}
+                      {already?<span style={{fontSize:11,color:'#16a34a',fontWeight:700}}>✓</span>:<button onClick={()=>onAdd({id:Date.now(),...item,done:false,lastDone:null,freqDays:item.freqDays||[],createdAt:new Date().toISOString()})} style={{padding:'3px 8px',borderRadius:8,border:`1px solid ${C.border2}`,background:C.card,color:theme.primary,fontSize:11,fontWeight:700,cursor:'pointer',width:'auto',margin:0}}>추가</button>}
                     </div>;
                   })}
                 </div>
@@ -700,4 +700,3 @@ function LifePage({lifeItems,onAdd,onToggle,onDelete,onEdit,streak,weeklyLog,upd
     </div>
   );
 }
-
