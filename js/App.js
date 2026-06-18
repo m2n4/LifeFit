@@ -169,7 +169,7 @@ function App() {
     const existingTexts = new Set(lifeItems.map(it => it.text));
     const uniquePresets = presets.filter(p => !existingTexts.has(p.text));
     await fb.setDoc(fb.doc(fb.db,'users',uid), {
-      name: user.displayName || '',
+      name: userName || user.displayName || '',
       onboarded: true,
       createdAt: fb.serverTimestamp(),
       streak: {count:0, lastDate:null},
@@ -210,13 +210,13 @@ function App() {
   if(authState === 'login' || authState === 'signup') return (
     <AuthScreen
       mode={authState}
-      onSuccess={(u)=>{setUser(u);}}
+      onSuccess={(u, name)=>{ setUser(u); if(name) setUserName(name); }}
       onBack={()=>setAuthState('welcome')}
     />
   );
   if(authState === 'onboarding') return (
     <Onboarding
-      userName={user?.displayName || ''}
+      userName={userName || user?.displayName || ''}
       onComplete={completeOnboarding}
     />
   );
