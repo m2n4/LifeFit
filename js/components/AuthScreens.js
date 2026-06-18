@@ -58,7 +58,8 @@ function AuthScreen({mode, onSuccess, onBack}) {
         cred = await fb.createUserWithEmailAndPassword(fb.auth, email, pw);
         if(name.trim()) await fb.updateProfile(cred.user, {displayName: name.trim()});
       }
-      onSuccess(cred.user);
+      // updateProfile 직후엔 displayName이 반영 안 될 수 있어서 name을 직접 전달
+      onSuccess(cred.user, name.trim() || cred.user.displayName || '');
     } catch(err) {
       const msgs = {
         'auth/user-not-found':'등록된 이메일이 없어요',
@@ -78,7 +79,7 @@ function AuthScreen({mode, onSuccess, onBack}) {
     setLoading(true); setError('');
     try {
       const cred = await fb.signInWithPopup(fb.auth, fb.googleProvider);
-      onSuccess(cred.user);
+      onSuccess(cred.user, cred.user.displayName || '');
     } catch(err) {
       setError('구글 로그인에 실패했어요.');
     }
