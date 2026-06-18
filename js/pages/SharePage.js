@@ -7,21 +7,35 @@ function SharePage({fb, user, lifeItems, foods}) {
   const [inputCode, setInputCode] = React.useState('');
   const [sharedWith, setSharedWith] = React.useState([]);
   const [sharedFrom, setSharedFrom] = React.useState(null);
+  const [sharedFromCode, setSharedFromCode] = React.useState('');
+  const [partnerStats, setPartnerStats] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [msg, setMsg] = React.useState('');
 
   React.useEffect(()=>{
     if(!fb||!user) return;
-    // 내 공유 코드 가져오기
+    // 내 공유 코드 및 연결 정보 가져오기
     fb.getDoc(fb.doc(fb.db,'users',user.uid)).then(snap=>{
       if((typeof snap.exists === 'function' ? snap.exists() : Boolean(snap.exists))) {
         const d = snap.data();
         setShareCode(d.shareCode||'');
         setSharedWith(d.sharedWith||[]);
         setSharedFrom(d.sharedFrom||null);
+        setSharedFromCode(d.sharedFromCode||'');
       }
     });
   },[fb,user]);
+
+  // 연결된 룸메이트 현황 가져오기
+  React.useEffect(()=>{
+    if(!fb||!sharedFrom) return;
+    fb.getDoc(fb.doc(fb.db,'users',sharedFrom)).then(snap=>{
+      if((typeof snap.exists === 'function' ? snap.exists() : Boolean(snap.exists))) {
+        const d = snap.data();
+        setPartnerStats({name: d.name||'룸메이트', animal: d.animal||'🐻'});
+      }
+    });
+  },[fb,sharedFrom]);
 
   async function generateCode() {
     if(!fb||!user) return;
@@ -34,12 +48,44 @@ function SharePage({fb, user, lifeItems, foods}) {
     if(!fb||!user||!inputCode.trim()) return;
     setLoading(true); setMsg('');
     try {
-      // 코드로 사용자 찾기
-      // (compat 방식 - fb 객체 직접 사용)
-            await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {sharedFrom:inputCode.trim().toUpperCase()});
-      setSharedFrom(inputCode.trim().toUpperCase());
-      setMsg('연결 요청을 보냈어요!');
-    } catch(e) { setMsg('오류가 발생했어요.'); }
+      const code = inputCode.trim().toUpperCase();
+      // shareCode로 상대방 유저 검색
+      const q = fb.query(
+        fb.collection(fb.db, 'users'),
+        fb.where('shareCode', '==', code)
+      );
+      const snap = await fb.getDocs(q);
+      if(snap.empty) {
+        setMsg('해당 코드를 가진 사용자를 찾을 수 없어요.');
+        setLoading(false);
+        return;
+      }
+      const partnerDoc = snap.docs[0];
+      const partnerId = partnerDoc.id;
+      if(partnerId === user.uid) {
+        setMsg('내 코드는 입력할 수 없어요.');
+        setLoading(false);
+        return;
+      }
+      // 내 문서에 sharedFrom(상대 uid) 저장
+      await fb.updateDoc(fb.doc(fb.db,'users',user.uid), {
+        sharedFrom: partnerId,
+        sharedFromCode: code,
+      });
+      // 상대방 문서에도 나를 sharedWith에 추가
+      const partnerData = partnerDoc.data();
+      const partnerSharedWith = partnerData.sharedWith || [];
+      if(!partnerSharedWith.includes(user.uid)) {
+        await fb.updateDoc(fb.doc(fb.db,'users',partnerId), {
+          sharedWith: [...partnerSharedWith, user.uid],
+        });
+      }
+      setSharedFrom(partnerId);
+      setMsg('✅ 룸메이트와 연결됐어요!');
+    } catch(e) {
+      console.error(e);
+      setMsg('오류가 발생했어요. 다시 시도해주세요.');
+    }
     setLoading(false);
   }
 
@@ -84,7 +130,7 @@ function SharePage({fb, user, lifeItems, foods}) {
           />
           <button onClick={connectShare} disabled={loading||inputCode.length<6} style={{padding:'11px 16px',borderRadius:11,border:'none',background:inputCode.length>=6?theme.primary:'#e5e7eb',color:inputCode.length>=6?'#fff':'#9ca3af',fontSize:14,fontWeight:700,cursor:inputCode.length>=6?'pointer':'default',width:'auto',margin:0}}>연결</button>
         </div>
-        {sharedFrom&&<div style={{marginTop:8,fontSize:12,color:'#16a34a',fontWeight:600}}>✓ {sharedFrom} 코드와 연결 중</div>}
+        {sharedFrom&&<div style={{marginTop:8,fontSize:12,color:'#16a34a',fontWeight:600}}>✓ {sharedFromCode||sharedFrom} 코드와 연결됐어요 {partnerStats?`(${partnerStats.animal} ${partnerStats.name})`:''}</div>}
         {msg&&<div style={{marginTop:8,fontSize:12,color:theme.primary,fontWeight:600}}>{msg}</div>}
       </div>
 
@@ -107,6 +153,24 @@ function SharePage({fb, user, lifeItems, foods}) {
         </div>
         <div style={{marginTop:10,fontSize:11,color:C.muted,textAlign:'center'}}>💡 공유 기능은 현재 베타 버전이에요</div>
       </div>
+
+      {/* 룸메이트 현황 */}
+      {partnerStats && (
+        <div style={{background:`linear-gradient(135deg,${theme.bg},${theme.light})`,borderRadius:18,padding:'20px',marginTop:14,border:`1.5px solid ${theme.mid}`}}>
+          <div style={{fontSize:13,fontWeight:700,color:theme.primary,marginBottom:10}}>
+            {partnerStats.animal} {partnerStats.name}의 현황
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:C.card,borderRadius:10}}>
+              <span style={{fontSize:13,color:C.text3}}>연결 상태</span>
+              <span style={{fontSize:13,fontWeight:700,color:'#16a34a'}}>✓ 연결됨</span>
+            </div>
+            <div style={{fontSize:11,color:C.muted,textAlign:'center',padding:'8px'}}>
+              💡 룸메이트가 앱을 사용하면 실시간 현황이 여기 표시돼요
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
